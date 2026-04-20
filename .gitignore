@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# federal source documents — PDFs, not source code
+documents/
+
 # vercel
 .vercel
 

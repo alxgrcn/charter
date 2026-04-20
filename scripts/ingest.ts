@@ -1,8 +1,8 @@
 import fs from 'fs/promises'
 import path from 'path'
-// pdf-parse is CJS-only; bundler moduleResolution resolves its ESM shim which has no default
+// pdf-parse v2: named export PDFParse, accepts { data: Buffer } or { url: string }
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
+const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buffer }) => { getText(): Promise<{ text: string }> } }
 import OpenAI from 'openai'
 import { createServiceClient } from '../lib/supabase'
 
@@ -22,7 +22,8 @@ export async function readDocument(filePath: string): Promise<string> {
 
   if (ext === '.pdf') {
     const buffer = await fs.readFile(filePath)
-    const data = await pdfParse(buffer)
+    const parser = new PDFParse({ data: buffer })
+    const data = await parser.getText()
     return data.text
   }
 
@@ -109,17 +110,21 @@ export async function ingestDocument(
 async function main() {
   const filePath = process.argv[2]
   const source = process.argv[3]
+  const section = process.argv[4] || undefined
+  const benefit_categories: string[] = process.argv[5] ? JSON.parse(process.argv[5]) : []
+  const eligibility_factors: string[] = process.argv[6] ? JSON.parse(process.argv[6]) : []
 
   if (!filePath || !source) {
-    console.error('Usage: npx ts-node scripts/ingest.ts <filePath> <source>')
+    console.error('Usage: npx ts-node scripts/ingest.ts <filePath> <source> [section] [benefit_categories_json] [eligibility_factors_json]')
     process.exit(1)
   }
 
   try {
     await ingestDocument(filePath, {
       source,
-      benefit_categories: [],
-      eligibility_factors: [],
+      section,
+      benefit_categories,
+      eligibility_factors,
     })
     console.log('Done.')
   } catch (err) {
