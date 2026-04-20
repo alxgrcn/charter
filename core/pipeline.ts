@@ -1,5 +1,7 @@
 import { Annotation, StateGraph, START, END } from '@langchain/langgraph'
 import type { VeteranProfile, BenefitDetermination, ReportJSON } from '../types/charter'
+import { retrieveChunks } from '../lib/rag'
+import { determineBenefit } from '../lib/llm'
 
 // ---------------------------------------------------------------------------
 // State
@@ -80,321 +82,88 @@ function enrichProfile(state: State): Partial<State> {
 // Node: analyzeHousing
 // ---------------------------------------------------------------------------
 
-function analyzeHousing(state: State): Partial<State> {
-  const { profile } = state
-  const atRisk =
-    profile.housing_status === 'homeless' || profile.housing_status === 'at_risk'
-  const eligible = !isDisqualifying(profile.discharge_type)
-
-  const qualifies: BenefitDetermination['qualifies'] =
-    atRisk && eligible ? 'yes' : !atRisk ? 'no' : 'possibly'
-
-  return {
-    benefits: [
-      {
-        benefit_id: 'hud_vash',
-        benefit_name: 'HUD-VASH Housing Voucher',
-        qualifies,
-        reason:
-          qualifies === 'yes'
-            ? 'Veteran meets HUD-VASH criteria: at-risk or homeless housing status with eligible discharge characterization.'
-            : qualifies === 'no'
-            ? 'Veteran is currently housed and does not meet the homeless or at-risk housing threshold for HUD-VASH.'
-            : 'Veteran may qualify pending discharge characterization review.',
-        citation: null,
-        confidence: 0.9,
-        steps: [
-          'Contact your local VA Medical Center and request a HUD-VASH referral',
-          'Complete the VA homeless eligibility screening with a case manager',
-          'Work with assigned VA case manager to apply for voucher through local Public Housing Authority',
-          'Attend housing counseling sessions as required by the PHA',
-        ],
-        documents_needed: ['DD-214', 'Photo ID', 'Social Security Card', 'Proof of income'],
-        phone_numbers: ['1-877-4AID-VET (1-877-424-3838)'],
-        estimated_timeline: '30–90 days from referral to voucher issuance',
-        common_denials: [
-          'Ineligible discharge characterization',
-          'Household income exceeds program limits',
-          'Does not meet HUD definition of homeless or at-risk',
-        ],
-        complexity: 'moderate',
-        needs_counselor_review: false,
-      },
-    ],
-  }
+async function analyzeHousing(state: State): Promise<Partial<State>> {
+  const chunks = await retrieveChunks(
+    'HUD-VASH housing voucher eligibility homeless at-risk veteran discharge',
+    { benefit_categories: ['housing'], state: state.profile.state }
+  )
+  const det = await determineBenefit(state.profile, chunks, 'hud_vash', 'HUD-VASH Housing Voucher')
+  return { benefits: [det] }
 }
 
 // ---------------------------------------------------------------------------
 // Node: analyzeHealthcare
 // ---------------------------------------------------------------------------
 
-function analyzeHealthcare(state: State): Partial<State> {
-  const { profile } = state
-  const eligible = !isDisqualifying(profile.discharge_type)
-  const hasDisability = (profile.disability_rating ?? 0) > 0
-  const combatVet = profile.combat_veteran
-
-  const qualifies: BenefitDetermination['qualifies'] = eligible
-    ? 'yes'
-    : isHonorableOrEquivalent(profile.discharge_type)
-    ? 'yes'
-    : 'possibly'
-
-  const priorityGroup =
-    (profile.disability_rating ?? 0) >= 50
-      ? 'Priority Group 1 (service-connected disability ≥ 50%)'
-      : hasDisability
-      ? 'Priority Group 2–3 (service-connected disability < 50%)'
-      : combatVet
-      ? 'Priority Group 6 (combat veteran, free care for 10 years post-separation)'
-      : 'Priority Group 7–8 (income-based copays may apply)'
-
-  return {
-    benefits: [
-      {
-        benefit_id: 'va_healthcare',
-        benefit_name: 'VA Healthcare Enrollment',
-        qualifies,
-        reason: `Veteran appears eligible for VA healthcare. Estimated enrollment: ${priorityGroup}.`,
-        citation: null,
-        confidence: 0.9,
-        steps: [
-          'Apply online at va.gov/health-care/apply or call 1-877-222-VETS',
-          'Complete VA Form 10-10EZ (Application for Health Benefits)',
-          'Provide DD-214 and most recent tax return for income-based priority group determination',
-          'Schedule initial enrollment appointment at your local VAMC',
-        ],
-        documents_needed: ['DD-214', 'Photo ID', 'Social Security Number', 'Most recent tax return (for income determination)'],
-        phone_numbers: ['1-877-222-VETS (1-877-222-8387)'],
-        estimated_timeline: '1–2 weeks for enrollment decision after application',
-        common_denials: [
-          'Discharge characterization does not meet minimum eligibility',
-          'Character of discharge review required',
-        ],
-        complexity: 'easy',
-        needs_counselor_review: false,
-      },
-    ],
-  }
+async function analyzeHealthcare(state: State): Promise<Partial<State>> {
+  const chunks = await retrieveChunks(
+    'VA healthcare enrollment eligibility priority group discharge',
+    { benefit_categories: ['healthcare'] }
+  )
+  const det = await determineBenefit(state.profile, chunks, 'va_healthcare', 'VA Healthcare Enrollment')
+  return { benefits: [det] }
 }
 
 // ---------------------------------------------------------------------------
 // Node: analyzeEducation
 // ---------------------------------------------------------------------------
 
-function analyzeEducation(state: State): Partial<State> {
-  const { profile } = state
-  const years = profile.years_served ?? 0
-  const honorable = isHonorableOrEquivalent(profile.discharge_type)
-  const postSep =
-    profile.separation_date !== null &&
-    new Date(profile.separation_date) > new Date('2001-09-11')
-
-  const qualifies: BenefitDetermination['qualifies'] =
-    honorable && years >= 3 && postSep
-      ? 'yes'
-      : honorable && years >= 1 && postSep
-      ? 'possibly'
-      : 'no'
-
-  const benefitPct =
-    years >= 36 ? '100%' : years >= 30 ? '90%' : years >= 24 ? '80%' : years >= 18 ? '70%' : years >= 12 ? '60%' : '40%'
-
-  return {
-    benefits: [
-      {
-        benefit_id: 'post_911_gi_bill',
-        benefit_name: 'Post-9/11 GI Bill (Chapter 33)',
-        qualifies,
-        reason:
-          qualifies === 'yes'
-            ? `Veteran meets Post-9/11 GI Bill eligibility. Estimated benefit: ${benefitPct} based on ${years} years of qualifying service.`
-            : qualifies === 'possibly'
-            ? `Veteran has ${years} year(s) of post-9/11 service. May qualify for partial benefit at a lower tier.`
-            : 'Veteran does not appear to meet minimum service or discharge requirements for Post-9/11 GI Bill.',
-        citation: null,
-        confidence: 0.9,
-        steps: [
-          'Apply at va.gov/education/apply-for-education-benefits',
-          'Complete VA Form 22-1990',
-          'Submit DD-214 and enrollment certification from school',
-          'School must be SCO-certified and submit VA enrollment certification',
-        ],
-        documents_needed: ['DD-214', 'Acceptance letter from school', 'Social Security Number'],
-        phone_numbers: ['1-888-GI-BILL-1 (1-888-442-4551)'],
-        estimated_timeline: '4–6 weeks for Certificate of Eligibility; payments begin after enrollment',
-        common_denials: [
-          'Insufficient qualifying active-duty service',
-          'Discharge characterization below General Under Honorable Conditions',
-          'Benefit previously transferred to dependents',
-        ],
-        complexity: 'moderate',
-        needs_counselor_review: false,
-      },
-    ],
-  }
+async function analyzeEducation(state: State): Promise<Partial<State>> {
+  const chunks = await retrieveChunks(
+    'Post-9/11 GI Bill chapter 33 education eligibility years service discharge',
+    { benefit_categories: ['education'] }
+  )
+  const det = await determineBenefit(state.profile, chunks, 'post_911_gi_bill', 'Post-9/11 GI Bill (Chapter 33)')
+  return { benefits: [det] }
 }
 
 // ---------------------------------------------------------------------------
 // Node: analyzeDisability
 // ---------------------------------------------------------------------------
 
-function analyzeDisability(state: State): Partial<State> {
-  const { profile } = state
-  const rating = profile.disability_rating ?? 0
-  const eligible = !isDisqualifying(profile.discharge_type)
-
-  const qualifies: BenefitDetermination['qualifies'] =
-    rating > 0 && eligible ? 'yes' : eligible ? 'possibly' : 'no'
-
-  return {
-    benefits: [
-      {
-        benefit_id: 'va_disability_comp',
-        benefit_name: 'VA Disability Compensation',
-        qualifies,
-        reason:
-          qualifies === 'yes'
-            ? `Veteran has an existing ${rating}% disability rating. Monthly compensation applies.`
-            : qualifies === 'possibly'
-            ? 'Veteran may have unrated service-connected conditions. A disability claim should be evaluated.'
-            : 'Veteran does not appear eligible due to discharge characterization.',
-        citation: null,
-        confidence: 0.9,
-        steps: [
-          'File a disability claim at va.gov/disability/file-disability-claim-form-21-526ez',
-          'Gather service records and medical evidence for each claimed condition',
-          'Attend Compensation & Pension (C&P) exam when scheduled by VA',
-          'Consider working with a VSO for free claims assistance',
-        ],
-        documents_needed: [
-          'DD-214',
-          'Service treatment records',
-          'Private medical records for claimed conditions',
-          'Buddy statements if available',
-        ],
-        phone_numbers: ['1-800-827-1000'],
-        estimated_timeline: '3–6 months for initial rating decision; appeals may take longer',
-        common_denials: [
-          'Condition not service-connected',
-          'Insufficient medical nexus between service and current condition',
-          'Condition considered a normal result of aging',
-        ],
-        complexity: 'complex',
-        needs_counselor_review: false,
-      },
-    ],
-  }
+async function analyzeDisability(state: State): Promise<Partial<State>> {
+  const chunks = await retrieveChunks(
+    'VA disability compensation service connected rating eligibility',
+    { benefit_categories: [] }
+  )
+  const det = await determineBenefit(state.profile, chunks, 'va_disability_comp', 'VA Disability Compensation')
+  return { benefits: [det] }
 }
 
 // ---------------------------------------------------------------------------
 // Node: analyzeEmployment
 // ---------------------------------------------------------------------------
 
-function analyzeEmployment(state: State): Partial<State> {
-  const { profile } = state
-  const rating = profile.disability_rating ?? 0
-  const eligible = rating >= 10 && !isDisqualifying(profile.discharge_type)
-
-  const qualifies: BenefitDetermination['qualifies'] =
-    rating >= 20 ? 'yes' : rating >= 10 ? 'possibly' : 'no'
-
-  return {
-    benefits: [
-      {
-        benefit_id: 'voc_rehab',
-        benefit_name: 'Vocational Rehabilitation & Employment (Chapter 31)',
-        qualifies,
-        reason:
-          qualifies === 'yes'
-            ? `Veteran has a ${rating}% disability rating. Chapter 31 VR&E provides job training, resume assistance, and employment support.`
-            : qualifies === 'possibly'
-            ? `Veteran has a ${rating}% disability rating. May qualify for VR&E with an employment handicap determination.`
-            : 'Veteran does not currently meet the minimum 10% disability rating threshold for VR&E.',
-        citation: null,
-        confidence: 0.9,
-        steps: [
-          'Apply at va.gov/careers-employment/vocational-rehabilitation',
-          'Complete VA Form 28-1900',
-          'Meet with a VR&E counselor for an initial evaluation',
-          'Develop a rehabilitation plan with your VR&E counselor',
-        ],
-        documents_needed: ['DD-214', 'VA disability rating decision letter', 'Photo ID'],
-        phone_numbers: ['1-800-827-1000'],
-        estimated_timeline: '30–60 days for initial counseling appointment; program duration 4 years maximum',
-        common_denials: [
-          'Disability rating below 10%',
-          'No employment handicap found',
-          'Benefit entitlement period expired (12 years from separation or rating)',
-        ],
-        complexity: 'moderate',
-        needs_counselor_review: !eligible,
-      },
-    ],
-  }
+async function analyzeEmployment(state: State): Promise<Partial<State>> {
+  const chunks = await retrieveChunks(
+    'vocational rehabilitation chapter 31 employment disability rating',
+    { benefit_categories: [] }
+  )
+  const det = await determineBenefit(
+    state.profile,
+    chunks,
+    'voc_rehab',
+    'Vocational Rehabilitation & Employment (Chapter 31)'
+  )
+  return { benefits: [det] }
 }
 
 // ---------------------------------------------------------------------------
 // Node: analyzeFinancial
 // ---------------------------------------------------------------------------
 
-function analyzeFinancial(state: State): Partial<State> {
-  const { profile } = state
-  const income = profile.household_income ?? Infinity
-  const size = profile.household_size ?? 1
-  const incomePerPerson = income / size
-  const wartime = profile.combat_veteran || (
-    profile.separation_date !== null &&
-    new Date(profile.separation_date) > new Date('1990-08-02')
+async function analyzeFinancial(state: State): Promise<Partial<State>> {
+  const chunks = await retrieveChunks(
+    'VA pension income wartime service financial benefit eligibility',
+    { benefit_categories: ['financial'] }
   )
-
-  // Rough VA Pension income threshold (~MAPR for a single veteran with no dependents)
-  const MAPR_SINGLE = 16551
-  const threshold = MAPR_SINGLE + (size - 1) * 2200
-  const underThreshold = income < threshold
-
-  const qualifies: BenefitDetermination['qualifies'] =
-    wartime && underThreshold ? 'yes' : wartime ? 'possibly' : 'no'
-
-  return {
-    benefits: [
-      {
-        benefit_id: 'va_pension',
-        benefit_name: 'VA Pension (Non-Service-Connected)',
-        qualifies,
-        reason:
-          qualifies === 'yes'
-            ? `Veteran appears to meet wartime service and income requirements for VA Pension. Estimated household income $${income.toLocaleString()} is below the MAPR threshold.`
-            : qualifies === 'possibly'
-            ? 'Veteran meets wartime service requirement but income may be above current MAPR. Medical deductions may bring income below threshold.'
-            : 'Veteran does not appear to meet wartime service requirements for VA Pension.',
-        citation: null,
-        confidence: 0.9,
-        steps: [
-          'Apply at va.gov/pension/apply-for-veteran-pension-form-21p-527ez',
-          'Complete VA Form 21P-527EZ',
-          'Gather proof of income, medical expenses, and wartime service documentation',
-          'Consider Aid & Attendance supplement if needing assistance with daily activities',
-        ],
-        documents_needed: [
-          'DD-214',
-          'Social Security award letter',
-          'Income tax returns',
-          'Medical expense receipts',
-          'Bank statements',
-        ],
-        phone_numbers: ['1-800-827-1000'],
-        estimated_timeline: '3–6 months for pension award decision',
-        common_denials: [
-          'Income exceeds Maximum Annual Pension Rate (MAPR)',
-          'Insufficient wartime service',
-          'Net worth exceeds VA limits',
-        ],
-        complexity: 'complex',
-        needs_counselor_review: false,
-      },
-    ],
-  }
+  const det = await determineBenefit(
+    state.profile,
+    chunks,
+    'va_pension',
+    'VA Pension (Non-Service-Connected)'
+  )
+  return { benefits: [det] }
 }
 
 // ---------------------------------------------------------------------------
