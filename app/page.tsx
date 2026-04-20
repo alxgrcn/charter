@@ -3,15 +3,33 @@
 import { useEffect, useRef, useState } from 'react'
 import ChatMessage from './components/ChatMessage'
 import ChatInput from './components/ChatInput'
+import type { VeteranProfile, ReportJSON } from '../types/charter'
 
 type Message = {
   role: 'user' | 'assistant'
   content: string
 }
 
+type ChatResponse = {
+  role: 'assistant'
+  content: string
+  profileUpdates?: Partial<VeteranProfile>
+  report?: ReportJSON
+}
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
+  const [profile, setProfile] = useState<Partial<VeteranProfile>>(() => ({
+    id: crypto.randomUUID(),
+    org_id: 'demo',
+    session_id: null,
+    combat_veteran: false,
+    created_at: new Date().toISOString(),
+    expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+  }))
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [report, setReport] = useState<ReportJSON | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -27,10 +45,17 @@ export default function ChatPage() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, profile }),
       })
-      const data = await res.json() as Message
-      setMessages((prev) => [...prev, data])
+      const data = await res.json() as ChatResponse
+      if (data.profileUpdates) {
+        setProfile((prev) => ({ ...prev, ...data.profileUpdates }))
+      }
+      if (data.report) {
+        console.log('[Charter] report generated:', data.report)
+        setReport(data.report)
+      }
+      setMessages((prev) => [...prev, { role: data.role, content: data.content }])
     } finally {
       setLoading(false)
     }
