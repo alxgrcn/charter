@@ -131,7 +131,11 @@ export async function POST(req: NextRequest) {
             const input = block.input as { field: string; value: unknown }
             // Log field name only — never log values (STANDARDS §2.5, no PII in logs)
             console.log('[charter/chat] record_field:', input.field)
-            profileUpdates = { ...profileUpdates, [input.field]: input.value }
+            const value =
+              input.field === 'disability_rating'
+                ? parseFloat(String(input.value))
+                : input.value
+            profileUpdates = { ...profileUpdates, [input.field]: value }
             toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'recorded' })
           }
 
