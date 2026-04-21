@@ -6,6 +6,7 @@
 LangGraph · Claude Sonnet · OpenAI text-embedding-3-small  
 **Repo:** ~/Desktop/charter | github.com/alxgrcn/charter  
 **Dev server:** localhost:3003  
+**Production URL:** https://charter-rosy.vercel.app  
 
 ## Rules (Non-Negotiable)
 1. Read CLAUDE.md AND STANDARDS.md only when explicitly instructed to at session start
