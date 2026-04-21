@@ -8,7 +8,7 @@ LangGraph · Claude Sonnet · OpenAI text-embedding-3-small
 **Dev server:** localhost:3003  
 
 ## Rules (Non-Negotiable)
-1. Read CLAUDE.md AND STANDARDS.md before writing any code in a new session
+1. Read CLAUDE.md AND STANDARDS.md only when explicitly instructed to at session start
 2. Plan Mode before every feature — propose, get approval, then build
 3. LOCAL FIRST — read actual files before assuming structure
 4. One task per commit. tsc + tests clean before every commit
