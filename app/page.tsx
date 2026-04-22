@@ -6,14 +6,22 @@ import ChatInput from './components/ChatInput'
 import BenefitReport from './components/BenefitReport'
 import type { VeteranProfile, ReportJSON } from '../types/charter'
 
-const STARTER_QUESTIONS = [
+const ROTATING_QUESTIONS = [
   "What benefits am I missing that I don't even know exist?",
-  "What little-known benefits do 100% vets actually get that nobody talks about?",
+  "What little-known benefits do 100% vets actually get?",
+  "Do my dependents get ChampVA at my current rating?",
+  "Should I file for secondary conditions now?",
   "What state benefits am I leaving on the table?",
+  "At my rating, what healthcare do I actually get?",
+  "The claim is moving slow — what's happening behind the scenes?",
   "I'm overwhelmed by the paperwork. Am I screwing this up?",
+  "Will DEA still be there for my kids in 10-15 years?",
+  "If I'm 80% P&T or TDIU, do I get the same stuff as 100%?",
 ]
 
-function detectChips(msg: Message | undefined): string[] {
+type AssistantMessage = { role: 'assistant'; content: string }
+
+function detectChips(msg: { role: string; content: string } | undefined): string[] {
   if (!msg || msg.role !== 'assistant') return []
   const text = msg.content.toLowerCase()
   if (/branch(\s+of\s+service)?/.test(text)) return ['Army', 'Navy', 'Marines', 'Air Force', 'Coast Guard', 'Space Force']
@@ -46,13 +54,29 @@ export default function ChatPage() {
     expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
   }))
   const [report, setReport] = useState<ReportJSON | null>(null)
+  const [chips, setChips] = useState<string[]>([])
+  const [questionIndex, setQuestionIndex] = useState(0)
+  const [questionVisible, setQuestionVisible] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
+  useEffect(() => {
+    if (messages.length > 0 || loading) return
+    const timer = setInterval(() => {
+      setQuestionVisible(false)
+      setTimeout(() => {
+        setQuestionIndex((i) => (i + 1) % ROTATING_QUESTIONS.length)
+        setQuestionVisible(true)
+      }, 300)
+    }, 2500)
+    return () => clearInterval(timer)
+  }, [messages.length, loading])
+
   async function handleSend(text: string) {
+    setChips([])
     const next: Message[] = [...messages, { role: 'user', content: text }]
     setMessages(next)
     setLoading(true)
@@ -71,7 +95,9 @@ export default function ChatPage() {
         console.log('[Charter] report generated:', data.report)
         setReport(data.report)
       }
-      setMessages((prev) => [...prev, { role: data.role, content: data.content }])
+      const newMsg: AssistantMessage = { role: data.role, content: data.content }
+      setMessages((prev) => [...prev, newMsg])
+      setChips(detectChips(newMsg))
     } finally {
       setLoading(false)
     }
@@ -89,18 +115,23 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="flex flex-col gap-3 max-w-2xl mx-auto">
           {messages.length === 0 && !loading && (
-            <div className="mt-8 flex flex-col gap-3">
-              <p className="text-center text-xs text-zinc-400 uppercase tracking-wide">Common questions</p>
-              <div className="grid grid-cols-2 gap-2">
-                {STARTER_QUESTIONS.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => handleSend(q)}
-                    disabled={loading}
-                    className="rounded-xl border border-zinc-200 bg-white p-3 text-left text-sm text-zinc-700 hover:border-blue-300 hover:bg-blue-50 transition-colors leading-snug"
-                  >
-                    {q}
-                  </button>
+            <div className="flex flex-col items-center justify-center gap-6 mt-16 px-4">
+              <button
+                onClick={() => handleSend(ROTATING_QUESTIONS[questionIndex])}
+                className={`text-center text-xl font-medium text-zinc-800 leading-snug max-w-sm transition-opacity duration-300 ${
+                  questionVisible ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                {ROTATING_QUESTIONS[questionIndex]}
+              </button>
+              <div className="flex gap-1.5">
+                {ROTATING_QUESTIONS.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                      i === questionIndex ? 'bg-zinc-500' : 'bg-zinc-300'
+                    }`}
+                  />
                 ))}
               </div>
             </div>
@@ -124,7 +155,7 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <ChatInput onSend={handleSend} disabled={loading} chips={detectChips(messages[messages.length - 1])} />
+      <ChatInput onSend={handleSend} disabled={loading} chips={chips} />
     </div>
   )
 }
