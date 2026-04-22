@@ -71,7 +71,7 @@ export default function ChatPage() {
         setQuestionIndex((i) => (i + 1) % ROTATING_QUESTIONS.length)
         setQuestionVisible(true)
       }, 500)
-    }, 2500)
+    }, 5000)
     return () => clearInterval(timer)
   }, [messages.length, loading])
 
