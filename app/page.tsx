@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import ChatMessage from './components/ChatMessage'
 import ChatInput from './components/ChatInput'
+import BenefitReport from './components/BenefitReport'
 import type { VeteranProfile, ReportJSON } from '../types/charter'
 
 type Message = {
@@ -28,7 +29,6 @@ export default function ChatPage() {
     created_at: new Date().toISOString(),
     expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
   }))
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [report, setReport] = useState<ReportJSON | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -80,6 +80,7 @@ export default function ChatPage() {
           {messages.map((msg, i) => (
             <ChatMessage key={i} role={msg.role} content={msg.content} />
           ))}
+          {report && <BenefitReport report={report} />}
           {loading && (
             <div className="flex justify-start">
               <div className="bg-zinc-100 rounded-2xl rounded-bl-sm px-4 py-3">
