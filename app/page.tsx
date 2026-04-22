@@ -70,7 +70,7 @@ export default function ChatPage() {
       setTimeout(() => {
         setQuestionIndex((i) => (i + 1) % ROTATING_QUESTIONS.length)
         setQuestionVisible(true)
-      }, 300)
+      }, 500)
     }, 2500)
     return () => clearInterval(timer)
   }, [messages.length, loading])
@@ -113,23 +113,23 @@ export default function ChatPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        <div className="flex flex-col gap-3 max-w-2xl mx-auto">
+        <div className={`flex flex-col gap-3 max-w-2xl mx-auto ${messages.length === 0 && !loading ? 'h-full' : ''}`}>
           {messages.length === 0 && !loading && (
-            <div className="flex flex-col items-center justify-center gap-6 mt-16 px-4">
+            <div className="flex-1 flex flex-col items-center justify-center gap-8 px-4">
               <button
                 onClick={() => handleSend(ROTATING_QUESTIONS[questionIndex])}
-                className={`text-center text-xl font-medium text-zinc-800 leading-snug max-w-sm transition-opacity duration-300 ${
+                className={`text-3xl font-semibold text-zinc-800 text-center max-w-2xl mx-auto leading-snug transition-opacity duration-500 ${
                   questionVisible ? 'opacity-100' : 'opacity-0'
                 }`}
               >
                 {ROTATING_QUESTIONS[questionIndex]}
               </button>
-              <div className="flex gap-1.5">
+              <div className="flex gap-2">
                 {ROTATING_QUESTIONS.map((_, i) => (
                   <span
                     key={i}
-                    className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                      i === questionIndex ? 'bg-zinc-500' : 'bg-zinc-300'
+                    className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                      i === questionIndex ? 'bg-blue-600' : 'border border-zinc-300'
                     }`}
                   />
                 ))}
