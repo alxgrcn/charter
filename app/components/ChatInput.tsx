@@ -5,9 +5,10 @@ import { useRef, useState } from 'react'
 type Props = {
   onSend: (text: string) => void
   disabled: boolean
+  chips?: string[]
 }
 
-export default function ChatInput({ onSend, disabled }: Props) {
+export default function ChatInput({ onSend, disabled, chips }: Props) {
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -37,6 +38,20 @@ export default function ChatInput({ onSend, disabled }: Props) {
 
   return (
     <div className="sticky bottom-0 bg-white border-t border-zinc-200 px-4 py-3">
+      {chips && chips.length > 0 && (
+        <div className="flex flex-wrap gap-2 max-w-2xl mx-auto pb-2">
+          {chips.map((chip) => (
+            <button
+              key={chip}
+              onClick={() => onSend(chip)}
+              disabled={disabled}
+              className="rounded-full border border-zinc-300 bg-white px-3 py-1 text-sm text-zinc-700 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex items-end gap-2 max-w-2xl mx-auto">
         <textarea
           ref={textareaRef}
