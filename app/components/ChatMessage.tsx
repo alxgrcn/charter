@@ -1,3 +1,5 @@
+import ReactMarkdown from 'react-markdown'
+
 type Props = {
   role: 'user' | 'assistant'
   content: string
@@ -15,7 +17,19 @@ export default function ChatMessage({ role, content }: Props) {
             : 'bg-zinc-100 text-zinc-900 rounded-bl-sm'
         }`}
       >
-        {content}
+        {isUser ? content : (
+          <ReactMarkdown
+            components={{
+              p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+              ul: ({ children }) => <ul className="list-disc list-inside mb-1">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal list-inside mb-1">{children}</ol>,
+              li: ({ children }) => <li className="ml-2">{children}</li>,
+            }}
+          >
+            {content}
+          </ReactMarkdown>
+        )}
       </div>
     </div>
   )

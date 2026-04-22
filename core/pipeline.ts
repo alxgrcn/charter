@@ -83,12 +83,18 @@ function enrichProfile(state: State): Partial<State> {
 // ---------------------------------------------------------------------------
 
 async function analyzeHousing(state: State): Promise<Partial<State>> {
-  const chunks = await retrieveChunks(
-    'HUD-VASH housing voucher eligibility homeless at-risk veteran discharge',
-    { benefit_categories: ['housing'], state: state.profile.state }
-  )
-  const det = await determineBenefit(state.profile, chunks, 'hud_vash', 'HUD-VASH Housing Voucher')
-  return { benefits: [det] }
+  console.log('[pipeline] analyzeHousing start')
+  try {
+    const chunks = await retrieveChunks(
+      'HUD-VASH housing voucher eligibility homeless at-risk veteran discharge',
+      { benefit_categories: ['housing'], state: state.profile.state }
+    )
+    const det = await determineBenefit(state.profile, chunks, 'hud_vash', 'HUD-VASH Housing Voucher')
+    return { benefits: [det] }
+  } catch (err) {
+    console.error('[pipeline] analyzeHousing failed:', err instanceof Error ? err.message : err)
+    throw err
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -96,12 +102,18 @@ async function analyzeHousing(state: State): Promise<Partial<State>> {
 // ---------------------------------------------------------------------------
 
 async function analyzeHealthcare(state: State): Promise<Partial<State>> {
-  const chunks = await retrieveChunks(
-    'VA healthcare enrollment eligibility priority group discharge',
-    { benefit_categories: ['healthcare'] }
-  )
-  const det = await determineBenefit(state.profile, chunks, 'va_healthcare', 'VA Healthcare Enrollment')
-  return { benefits: [det] }
+  console.log('[pipeline] analyzeHealthcare start')
+  try {
+    const chunks = await retrieveChunks(
+      'VA healthcare enrollment eligibility priority group discharge',
+      { benefit_categories: ['healthcare'] }
+    )
+    const det = await determineBenefit(state.profile, chunks, 'va_healthcare', 'VA Healthcare Enrollment')
+    return { benefits: [det] }
+  } catch (err) {
+    console.error('[pipeline] analyzeHealthcare failed:', err instanceof Error ? err.message : err)
+    throw err
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -109,12 +121,18 @@ async function analyzeHealthcare(state: State): Promise<Partial<State>> {
 // ---------------------------------------------------------------------------
 
 async function analyzeEducation(state: State): Promise<Partial<State>> {
-  const chunks = await retrieveChunks(
-    'Post-9/11 GI Bill chapter 33 education eligibility years service discharge',
-    { benefit_categories: ['education'] }
-  )
-  const det = await determineBenefit(state.profile, chunks, 'post_911_gi_bill', 'Post-9/11 GI Bill (Chapter 33)')
-  return { benefits: [det] }
+  console.log('[pipeline] analyzeEducation start')
+  try {
+    const chunks = await retrieveChunks(
+      'Post-9/11 GI Bill chapter 33 education eligibility years service discharge',
+      { benefit_categories: ['education'] }
+    )
+    const det = await determineBenefit(state.profile, chunks, 'post_911_gi_bill', 'Post-9/11 GI Bill (Chapter 33)')
+    return { benefits: [det] }
+  } catch (err) {
+    console.error('[pipeline] analyzeEducation failed:', err instanceof Error ? err.message : err)
+    throw err
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -122,12 +140,18 @@ async function analyzeEducation(state: State): Promise<Partial<State>> {
 // ---------------------------------------------------------------------------
 
 async function analyzeDisability(state: State): Promise<Partial<State>> {
-  const chunks = await retrieveChunks(
-    'VA disability compensation service connected rating eligibility',
-    { benefit_categories: [] }
-  )
-  const det = await determineBenefit(state.profile, chunks, 'va_disability_comp', 'VA Disability Compensation')
-  return { benefits: [det] }
+  console.log('[pipeline] analyzeDisability start')
+  try {
+    const chunks = await retrieveChunks(
+      'VA disability compensation service connected rating eligibility',
+      { benefit_categories: [] }
+    )
+    const det = await determineBenefit(state.profile, chunks, 'va_disability_comp', 'VA Disability Compensation')
+    return { benefits: [det] }
+  } catch (err) {
+    console.error('[pipeline] analyzeDisability failed:', err instanceof Error ? err.message : err)
+    throw err
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -135,17 +159,23 @@ async function analyzeDisability(state: State): Promise<Partial<State>> {
 // ---------------------------------------------------------------------------
 
 async function analyzeEmployment(state: State): Promise<Partial<State>> {
-  const chunks = await retrieveChunks(
-    'vocational rehabilitation chapter 31 employment disability rating',
-    { benefit_categories: [] }
-  )
-  const det = await determineBenefit(
-    state.profile,
-    chunks,
-    'voc_rehab',
-    'Vocational Rehabilitation & Employment (Chapter 31)'
-  )
-  return { benefits: [det] }
+  console.log('[pipeline] analyzeEmployment start')
+  try {
+    const chunks = await retrieveChunks(
+      'vocational rehabilitation chapter 31 employment disability rating',
+      { benefit_categories: [] }
+    )
+    const det = await determineBenefit(
+      state.profile,
+      chunks,
+      'voc_rehab',
+      'Vocational Rehabilitation & Employment (Chapter 31)'
+    )
+    return { benefits: [det] }
+  } catch (err) {
+    console.error('[pipeline] analyzeEmployment failed:', err instanceof Error ? err.message : err)
+    throw err
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -153,17 +183,23 @@ async function analyzeEmployment(state: State): Promise<Partial<State>> {
 // ---------------------------------------------------------------------------
 
 async function analyzeFinancial(state: State): Promise<Partial<State>> {
-  const chunks = await retrieveChunks(
-    'VA pension income wartime service financial benefit eligibility',
-    { benefit_categories: ['financial'] }
-  )
-  const det = await determineBenefit(
-    state.profile,
-    chunks,
-    'va_pension',
-    'VA Pension (Non-Service-Connected)'
-  )
-  return { benefits: [det] }
+  console.log('[pipeline] analyzeFinancial start')
+  try {
+    const chunks = await retrieveChunks(
+      'VA pension income wartime service financial benefit eligibility',
+      { benefit_categories: ['financial'] }
+    )
+    const det = await determineBenefit(
+      state.profile,
+      chunks,
+      'va_pension',
+      'VA Pension (Non-Service-Connected)'
+    )
+    return { benefits: [det] }
+  } catch (err) {
+    console.error('[pipeline] analyzeFinancial failed:', err instanceof Error ? err.message : err)
+    throw err
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -393,7 +429,12 @@ const graph = new StateGraph(PipelineState)
 // ---------------------------------------------------------------------------
 
 export async function runPipeline(profile: VeteranProfile): Promise<ReportJSON> {
+  console.log('[pipeline] start — profile id:', profile.id)
   const result = await graph.invoke({ profile })
-  if (!result.report) throw new Error('Pipeline completed without generating a report')
+  if (!result.report) {
+    console.error('[pipeline] completed without report — state:', JSON.stringify({ benefitCount: result.benefits?.length }))
+    throw new Error('Pipeline completed without generating a report')
+  }
+  console.log('[pipeline] complete — benefits:', result.report.benefits.length)
   return result.report
 }

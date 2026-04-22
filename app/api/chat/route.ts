@@ -243,9 +243,10 @@ export async function POST(req: NextRequest) {
               report = await runPipeline(mergedProfile)
               toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Analysis complete. Present the key findings to the veteran.' })
             } catch (err) {
-              // Log error type only — no PII
+              const name = err instanceof Error ? err.name : 'UnknownError'
               const msg = err instanceof Error ? err.message : 'unknown error'
-              console.error('[charter/chat] pipeline error:', msg)
+              const stack = err instanceof Error ? (err.stack ?? '').split('\n').slice(0, 4).join(' | ') : ''
+              console.error(`[charter/chat] pipeline error — ${name}: ${msg} | ${stack}`)
               toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Analysis failed. Let the veteran know you encountered an issue and suggest they contact a VSO.' })
             }
           }
