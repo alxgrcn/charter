@@ -239,15 +239,22 @@ export async function POST(req: NextRequest) {
 
           if (block.name === 'trigger_analysis') {
             const mergedProfile = { ...profile, ...profileUpdates } as VeteranProfile
+            const pipelineStart = Date.now()
+            console.log('[charter/chat] runPipeline start — t=0ms')
             try {
               report = await runPipeline(mergedProfile)
+              const elapsed = Date.now() - pipelineStart
+              console.log(`[charter/chat] runPipeline complete — elapsed=${elapsed}ms`)
               toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Analysis complete. Present the key findings to the veteran.' })
             } catch (err) {
-              const name = err instanceof Error ? err.name : 'UnknownError'
-              const msg = err instanceof Error ? err.message : 'unknown error'
-              const stack = err instanceof Error ? (err.stack ?? '').split('\n').slice(0, 4).join(' | ') : ''
-              console.error(`[charter/chat] pipeline error — ${name}: ${msg} | ${stack}`)
-              toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Analysis failed. Let the veteran know you encountered an issue and suggest they contact a VSO.' })
+              const elapsed = Date.now() - pipelineStart
+              console.error(`[charter/chat] runPipeline FAILED — elapsed=${elapsed}ms`, err)
+              const msg = err instanceof Error ? err.message : String(err)
+              toolResults.push({
+                type: 'tool_result',
+                tool_use_id: block.id,
+                content: `Analysis failed (${elapsed}ms): ${msg}. Let the veteran know you encountered an issue and suggest they contact a VSO.`,
+              })
             }
           }
         }
