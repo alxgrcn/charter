@@ -6,9 +6,10 @@ type Props = {
   onSend: (text: string) => void
   disabled: boolean
   chips?: string[]
+  isLanding?: boolean
 }
 
-export default function ChatInput({ onSend, disabled, chips }: Props) {
+export default function ChatInput({ onSend, disabled, chips, isLanding }: Props) {
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -37,7 +38,10 @@ export default function ChatInput({ onSend, disabled, chips }: Props) {
   }
 
   return (
-    <div className="sticky bottom-0 bg-white border-t border-zinc-200 px-4 py-3">
+    <div className={isLanding
+      ? "bg-white px-4 pt-4 pb-[120px]"
+      : "sticky bottom-0 bg-white border-t border-zinc-200 px-4 py-3"
+    }>
       {chips && chips.length > 0 && (
         <div className="flex flex-wrap gap-2 max-w-2xl mx-auto pb-2">
           {chips.map((chip) => (

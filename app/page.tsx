@@ -70,8 +70,8 @@ export default function ChatPage() {
       setTimeout(() => {
         setQuestionIndex((i) => (i + 1) % ROTATING_QUESTIONS.length)
         setQuestionVisible(true)
-      }, 500)
-    }, 5000)
+      }, 700)
+    }, 8000)
     return () => clearInterval(timer)
   }, [messages.length, loading])
 
@@ -103,6 +103,26 @@ export default function ChatPage() {
     }
   }
 
+  const isLanding = messages.length === 0 && !loading
+
+  if (isLanding) {
+    return (
+      <div className="flex flex-col h-[100dvh] bg-white">
+        <div className="flex-1 flex items-center justify-center px-8">
+          <button
+            onClick={() => handleSend(ROTATING_QUESTIONS[questionIndex])}
+            className={`text-5xl font-light text-zinc-800 text-center max-w-2xl leading-snug transition-opacity duration-700 ${
+              questionVisible ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            {ROTATING_QUESTIONS[questionIndex]}
+          </button>
+        </div>
+        <ChatInput onSend={handleSend} disabled={loading} chips={chips} isLanding />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-[100dvh] bg-white">
       <header className="flex-shrink-0 border-b border-zinc-200 px-4 py-3">
@@ -113,29 +133,7 @@ export default function ChatPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        <div className={`flex flex-col gap-3 max-w-2xl mx-auto ${messages.length === 0 && !loading ? 'h-full' : ''}`}>
-          {messages.length === 0 && !loading && (
-            <div className="flex-1 flex flex-col items-center justify-center gap-8 px-4">
-              <button
-                onClick={() => handleSend(ROTATING_QUESTIONS[questionIndex])}
-                className={`text-3xl font-semibold text-zinc-800 text-center max-w-2xl mx-auto leading-snug transition-opacity duration-500 ${
-                  questionVisible ? 'opacity-100' : 'opacity-0'
-                }`}
-              >
-                {ROTATING_QUESTIONS[questionIndex]}
-              </button>
-              <div className="flex gap-2">
-                {ROTATING_QUESTIONS.map((_, i) => (
-                  <span
-                    key={i}
-                    className={`w-2 h-2 rounded-full transition-colors duration-300 ${
-                      i === questionIndex ? 'bg-blue-600' : 'border border-zinc-300'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="flex flex-col gap-3 max-w-2xl mx-auto">
           {messages.map((msg, i) => (
             <ChatMessage key={i} role={msg.role} content={msg.content} />
           ))}
