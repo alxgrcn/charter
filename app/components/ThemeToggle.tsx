@@ -67,12 +67,12 @@ export default function ThemeToggle({ bottom = 24 }: Props) {
         {/* Moon crescent cutout */}
         <span style={{
           position: 'absolute',
-          width: 9,
-          height: 9,
+          width: 12,
+          height: 12,
           borderRadius: '50%',
           background: '#1e2a3a',
-          top: -2,
-          left: 4,
+          top: 2,
+          left: 5,
           opacity: isDark ? 1 : 0,
           transition: 'opacity 0.4s ease',
         }} />
