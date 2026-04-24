@@ -126,8 +126,17 @@ export default function ChatPage() {
 
   if (isLanding) {
     return (
-      <div className="flex flex-col h-[100dvh] items-center justify-center" style={{ background: 'linear-gradient(160deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%)' }}>
-        <ThemeToggle />
+      <div className="flex flex-col h-[100dvh]" style={{ background: 'linear-gradient(160deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%)' }}>
+        <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 px-4 py-3">
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <div>
+              <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Charter</h1>
+              <p className="text-xs text-gray-400 dark:text-gray-500">Veteran Benefits Navigator</p>
+            </div>
+            <ThemeToggle />
+          </div>
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center">
         <div className="w-full max-w-2xl px-6 flex flex-col items-center gap-5 -mt-[5vh]">
           <button
             onClick={() => handleSend(ROTATING_QUESTIONS[questionIndex])}
@@ -154,17 +163,20 @@ export default function ChatPage() {
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center">Used by veteran counselors at US Vets</p>
         </div>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="flex flex-col h-[100dvh]" style={{ background: 'linear-gradient(160deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%)' }}>
-      <ThemeToggle bottom={80} />
       <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 px-4 py-3">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Charter</h1>
-          <p className="text-xs text-gray-400 dark:text-gray-500">Veteran Benefits Navigator</p>
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Charter</h1>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Veteran Benefits Navigator</p>
+          </div>
+          <ThemeToggle />
         </div>
       </header>
 

@@ -2,11 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-type Props = {
-  bottom?: number
-}
-
-export default function ThemeToggle({ bottom = 24 }: Props) {
+export default function ThemeToggle() {
   const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
@@ -34,11 +30,7 @@ export default function ThemeToggle({ bottom = 24 }: Props) {
       onClick={toggle}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       style={{
-        position: 'fixed',
-        bottom: bottom,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 9999,
+        flexShrink: 0,
         width: 44,
         height: 22,
         borderRadius: 11,
@@ -48,7 +40,7 @@ export default function ThemeToggle({ bottom = 24 }: Props) {
         cursor: 'pointer',
         padding: 0,
         overflow: 'hidden',
-        flexShrink: 0,
+        position: 'relative',
       }}
     >
       {/* Sliding circle */}
