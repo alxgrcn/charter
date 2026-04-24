@@ -95,6 +95,9 @@ export default function ChatPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: next, profile }),
       })
+      if (!res.ok) {
+        throw new Error(`Server error ${res.status}`)
+      }
       const data = await res.json() as ChatResponse
       if (data.profileUpdates) {
         setProfile((prev) => ({ ...prev, ...data.profileUpdates }))
@@ -106,6 +109,13 @@ export default function ChatPage() {
       const newMsg: AssistantMessage = { role: data.role, content: data.content }
       setMessages((prev) => [...prev, newMsg])
       setChips(detectChips(newMsg))
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error'
+      console.error('[Charter] fetch error:', errMsg)
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: "I'm having trouble connecting right now. Please try again in a moment, or call 1-800-827-1000 to speak with a Veterans Service Officer.",
+      }])
     } finally {
       setLoading(false)
     }

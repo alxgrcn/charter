@@ -14,7 +14,7 @@ export type RagChunk = {
 export async function retrieveChunks(
   query: string,
   filters: { benefit_categories?: string[]; state?: string | null },
-  topK = 5
+  topK = 3
 ): Promise<RagChunk[]> {
   try {
     const embRes = await openai.embeddings.create({
