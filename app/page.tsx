@@ -30,14 +30,11 @@ const ROTATING_QUESTIONS = [
 
 type AssistantMessage = { role: 'assistant'; content: string }
 
-function detectChips(msg: { role: string; content: string } | undefined): string[] {
-  if (!msg || msg.role !== 'assistant') return []
-  const text = msg.content.toLowerCase()
-  if (/branch(\s+of\s+service)?/.test(text)) return ['Army', 'Navy', 'Marines', 'Air Force', 'Coast Guard', 'Space Force']
-  if (/discharge/.test(text)) return ['Honorable', 'General (Under Honorable)', 'Other Than Honorable', 'Medical']
-  if (/housing/.test(text)) return ['Stable housing', 'At risk', 'Currently homeless', 'Living with family/friends']
-  if (/employ|working|current(ly)?\s+work/.test(text)) return ['Currently employed', 'Employed but limited hours', 'Not currently employed', 'Unable to work']
-  return []
+const CHIP_SETS: Record<string, string[]> = {
+  branch: ['Army', 'Navy', 'Marines', 'Air Force', 'Coast Guard', 'Space Force'],
+  discharge: ['Honorable', 'General (Under Honorable)', 'Other Than Honorable', 'Medical'],
+  housing: ['Stable housing', 'At risk', 'Currently homeless', 'Living with family/friends'],
+  employment: ['Currently employed', 'Employed but limited hours', 'Not currently employed', 'Unable to work'],
 }
 
 type Message = {
@@ -50,6 +47,7 @@ type ChatResponse = {
   content: string
   profileUpdates?: Partial<VeteranProfile>
   report?: ReportJSON
+  chipSet?: string | null
 }
 
 export default function ChatPage() {
@@ -110,7 +108,7 @@ export default function ChatPage() {
       }
       const newMsg: AssistantMessage = { role: data.role, content: data.content }
       setMessages((prev) => [...prev, newMsg])
-      setChips(detectChips(newMsg))
+      setChips(data.chipSet ? (CHIP_SETS[data.chipSet] ?? []) : [])
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Unknown error'
       console.error('[Charter] fetch error:', errMsg)
@@ -128,7 +126,7 @@ export default function ChatPage() {
   if (isLanding) {
     return (
       <div className="flex flex-col h-[100dvh]" style={{ background: 'linear-gradient(160deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%)' }}>
-        <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 py-3 px-6 [@media(min-width:900px)]:px-[200px]">
+        <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 py-3 px-6 [@media(min-width:900px)]:px-[150px]">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Charter</h1>
@@ -171,7 +169,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-[100dvh]" style={{ background: 'linear-gradient(160deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%)' }}>
-      <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 py-3 px-6 [@media(min-width:900px)]:px-[200px]">
+      <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 py-3 px-6 [@media(min-width:900px)]:px-[150px]">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Charter</h1>

@@ -130,14 +130,12 @@ When you have: branch, discharge type, years served, and at least one current si
 Script: "What's the best number to reach you by text — and what's your name so the counselor knows who they're calling?"
 Wait for response. Immediately call record_field for both: name and phone.
 Then call record_field twice: contact_consent = true, contact_consent_at = current ISO timestamp.
-Then ask: "Would you also like us to email you a copy of your report? That way you'll have it ready when your counselor calls."
-If yes: ask for email address, record_field: email, then immediately call trigger_analysis().
-If no: respond warmly in one sentence (e.g., "No problem — your counselor will have everything they need."), then immediately call trigger_analysis().
+Then immediately call trigger_analysis(). Do not ask for email here.
 
 Stage 6 — REPORT DELIVERY
 Deliver the full benefit report. Opening line: "Here's what I found based on your service record — everything below is yours to claim."
 The system renders the 988 Veterans Crisis Line banner and disclaimer automatically.
-Do not ask for email here — it was already offered in Stage 5.
+Do not ask for email — the UI handles email capture after the report renders.
 
 ---
 
@@ -151,6 +149,19 @@ BAD: "Got it. How many years did you serve?"
 GOOD: "Army — solid. How many years did you serve?"
 
 Match the veteran's tone. Brief answers get brief follow-ups.
+
+---
+
+CHIP SIGNALING — required
+
+Before asking about any of these specific topics, call set_chip_context with the matching value. This controls the quick-reply buttons the veteran sees — do not skip this.
+- About to ask service branch → set_chip_context("branch")
+- About to ask discharge type → set_chip_context("discharge")
+- About to ask housing situation → set_chip_context("housing")
+- About to ask employment status → set_chip_context("employment")
+- Any other question → do NOT call set_chip_context
+
+Call set_chip_context before producing your text response for that turn.
 
 ---
 
@@ -195,6 +206,21 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'set_chip_context',
+    description: 'Signal which quick-reply chip set to show the veteran for their next response. Call this before producing the message that asks the relevant question.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        chipSet: {
+          type: 'string',
+          enum: ['branch', 'discharge', 'housing', 'employment'],
+          description: 'Which chip set to display: branch | discharge | housing | employment',
+        },
+      },
+      required: ['chipSet'],
+    },
+  },
+  {
     name: 'trigger_analysis',
     description: 'Trigger the full benefits analysis pipeline. Call when you have collected enough profile information (at minimum: service_branch, years_served, discharge_type).',
     input_schema: {
@@ -225,6 +251,7 @@ export async function POST(req: NextRequest) {
     let profileUpdates: Partial<VeteranProfile> = {}
     let report: ReportJSON | undefined
     let lastAssistantText = ''
+    let chipSet: string | null = null
 
     const MAX_LOOPS = 10
     for (let i = 0; i < MAX_LOOPS; i++) {
@@ -237,7 +264,7 @@ export async function POST(req: NextRequest) {
       })
 
       const textBlock = response.content.find((b) => b.type === 'text')
-      if (textBlock?.type === 'text') lastAssistantText = textBlock.text
+      if (textBlock?.type === 'text' && textBlock.text) lastAssistantText = textBlock.text
 
       if (response.stop_reason === 'end_turn') break
 
@@ -264,6 +291,12 @@ export async function POST(req: NextRequest) {
             // before these values will persist to veteran_profiles.
             profileUpdates = { ...profileUpdates, [input.field]: value }
             toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'recorded' })
+          }
+
+          if (block.name === 'set_chip_context') {
+            const input = block.input as { chipSet: string }
+            chipSet = input.chipSet
+            toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'chip context set' })
           }
 
           if (block.name === 'flag_uncertain') {
@@ -308,6 +341,7 @@ export async function POST(req: NextRequest) {
       content: lastAssistantText || "I'm sorry, I wasn't able to generate a response. Please try again or contact a Veterans Service Officer at 1-800-827-1000.",
       ...(Object.keys(profileUpdates).length > 0 && { profileUpdates }),
       ...(report && { report }),
+      chipSet,
     })
   } catch (err) {
     console.error('[chat/route]:', redact(err instanceof Error ? { message: err.message } : err))
