@@ -115,29 +115,32 @@ export default function ChatPage() {
 
   if (isLanding) {
     return (
-      <div className="flex flex-col h-[100dvh] bg-white">
-        <div className="flex-1 flex items-center justify-center px-8">
+      <div className="flex flex-col h-[100dvh] bg-white items-center justify-center">
+        <div className="w-full max-w-2xl px-6 flex flex-col items-center gap-5 -mt-[5vh]">
           <button
             onClick={() => handleSend(ROTATING_QUESTIONS[questionIndex])}
-            className={`text-5xl font-light text-zinc-800 text-center max-w-2xl leading-snug transition-opacity duration-700 ${
+            style={{ fontFamily: 'var(--font-playfair, Georgia, serif)' }}
+            className={`text-5xl font-light text-zinc-800 text-center leading-snug transition-opacity duration-700 ${
               questionVisible ? 'opacity-100' : 'opacity-0'
             }`}
           >
             {ROTATING_QUESTIONS[questionIndex]}
           </button>
-        </div>
-        <ChatInput onSend={handleSend} disabled={loading} chips={chips} isLanding />
-        <div className="flex flex-wrap justify-center gap-2 px-4 pb-10">
-          {LANDING_CHIPS.map((chip) => (
-            <button
-              key={chip}
-              onClick={() => handleSend(chip)}
-              disabled={loading}
-              className="rounded-full bg-zinc-900 border border-zinc-700 px-4 py-2 text-sm text-white hover:bg-zinc-800 transition-colors"
-            >
-              {chip}
-            </button>
-          ))}
+          <p className="text-sm text-gray-400 text-center tracking-wide">Free. Private. Built for veterans.</p>
+          <ChatInput onSend={handleSend} disabled={loading} chips={chips} isLanding />
+          <div className="flex flex-wrap justify-center gap-2 max-w-2xl mx-auto px-4">
+            {LANDING_CHIPS.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => handleSend(chip)}
+                disabled={loading}
+                className="rounded-full bg-zinc-900 border border-zinc-700 px-4 py-2 text-sm text-white hover:bg-zinc-800 transition-colors"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 text-center">Used by veteran counselors at US Vets</p>
         </div>
       </div>
     )

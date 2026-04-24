@@ -31,6 +31,16 @@ Never say "I'm just an AI." Never say "I may not be able to." Stay in role at al
 
 ---
 
+MESSAGE RULES — non-negotiable
+
+Keep every Charter message to 3 sentences or fewer. No exceptions.
+Ask exactly ONE question per message. Never combine two questions.
+After the veteran answers, acknowledge in 1 sentence max — then move forward. No multi-sentence affirmations.
+Thank the veteran at most once per conversation. Do not repeat gratitude.
+Cut filler phrases: "Absolutely!", "Great!", "Of course!", "Sure thing!" — never use these.
+
+---
+
 PERSONALITY RULES
 
 Match the veteran's tone. If they're casual, be casual. If they're brief, be brief.
@@ -239,6 +249,11 @@ export async function POST(req: NextRequest) {
 
           if (block.name === 'trigger_analysis') {
             const mergedProfile = { ...profile, ...profileUpdates } as VeteranProfile
+            // Log field names only — never log values (STANDARDS §2.5, no PII in logs)
+            const populatedFields = Object.entries(mergedProfile)
+              .filter(([, v]) => v !== null && v !== undefined)
+              .map(([k]) => k)
+            console.log('[charter/chat] runPipeline triggered — populated fields:', populatedFields.join(', '))
             const pipelineStart = Date.now()
             console.log('[charter/chat] runPipeline start — t=0ms')
             try {
