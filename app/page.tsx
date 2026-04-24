@@ -6,6 +6,14 @@ import ChatInput from './components/ChatInput'
 import BenefitReport from './components/BenefitReport'
 import type { VeteranProfile, ReportJSON } from '../types/charter'
 
+const LANDING_CHIPS = [
+  '🏠 I need housing help',
+  '🎓 I want to go back to school',
+  '🏡 I want to buy a home',
+  '📋 Help me understand my rating',
+  '💼 Find jobs & career help',
+]
+
 const ROTATING_QUESTIONS = [
   "What benefits am I missing that I don't even know exist?",
   "What little-known benefits do 100% vets actually get?",
@@ -119,6 +127,18 @@ export default function ChatPage() {
           </button>
         </div>
         <ChatInput onSend={handleSend} disabled={loading} chips={chips} isLanding />
+        <div className="flex flex-wrap justify-center gap-2 px-4 pb-10">
+          {LANDING_CHIPS.map((chip) => (
+            <button
+              key={chip}
+              onClick={() => handleSend(chip)}
+              disabled={loading}
+              className="rounded-full bg-zinc-900 border border-zinc-700 px-4 py-2 text-sm text-white hover:bg-zinc-800 transition-colors"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
       </div>
     )
   }

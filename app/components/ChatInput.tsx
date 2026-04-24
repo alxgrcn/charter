@@ -39,7 +39,7 @@ export default function ChatInput({ onSend, disabled, chips, isLanding }: Props)
 
   return (
     <div className={isLanding
-      ? "bg-white px-4 pt-4 pb-[120px]"
+      ? "bg-white px-4 pt-4 pb-3"
       : "sticky bottom-0 bg-white border-t border-zinc-200 px-4 py-3"
     }>
       {chips && chips.length > 0 && (
