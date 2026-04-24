@@ -160,7 +160,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-[100dvh]" style={{ background: 'linear-gradient(160deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%)' }}>
-      <ThemeToggle />
+      <ThemeToggle bottom={80} />
       <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 px-4 py-3">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Charter</h1>
