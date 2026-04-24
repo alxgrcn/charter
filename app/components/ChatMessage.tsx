@@ -15,8 +15,8 @@ export default function ChatMessage({ role, content }: Props) {
       <div
         className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
           isUser
-            ? 'bg-blue-600 text-white rounded-br-sm'
-            : 'bg-zinc-100 text-zinc-900 rounded-bl-sm'
+            ? 'bg-gray-900 text-white rounded-br-sm'
+            : 'bg-white border border-gray-100 shadow-sm text-gray-800 rounded-bl-sm'
         }`}
       >
         {isUser ? content : (

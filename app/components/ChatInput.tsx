@@ -40,7 +40,7 @@ export default function ChatInput({ onSend, disabled, chips, isLanding }: Props)
   return (
     <div className={isLanding
       ? "w-full"
-      : "sticky bottom-0 bg-white border-t border-zinc-200 px-4 py-3"
+      : "sticky bottom-0 bg-white/80 backdrop-blur-sm border-t border-gray-100 px-4 py-3"
     }>
       {chips && chips.length > 0 && (
         <div className="flex flex-wrap gap-2 max-w-2xl mx-auto pb-2">
@@ -65,12 +65,12 @@ export default function ChatInput({ onSend, disabled, chips, isLanding }: Props)
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder="Message Charter…"
-          className="flex-1 resize-none rounded-2xl border border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 leading-relaxed"
+          className="flex-1 resize-none rounded-2xl border border-gray-200 bg-white shadow-md px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 leading-relaxed"
         />
         <button
           onClick={submit}
           disabled={disabled || !value.trim()}
-          className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-blue-600 text-white disabled:opacity-40 hover:bg-blue-700 transition-colors"
+          className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-gray-900 text-white disabled:opacity-40 hover:bg-gray-700 transition-colors"
           aria-label="Send"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
