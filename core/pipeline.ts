@@ -1,7 +1,7 @@
 import { Annotation, StateGraph, START, END } from '@langchain/langgraph'
 import type { VeteranProfile, BenefitDetermination, ReportJSON } from '../types/charter'
 import { retrieveChunks } from '../lib/rag'
-import { determineBenefit } from '../lib/llm'
+import { determineAllBenefits } from '../lib/llm'
 
 // ---------------------------------------------------------------------------
 // State
@@ -79,127 +79,33 @@ function enrichProfile(state: State): Partial<State> {
 }
 
 // ---------------------------------------------------------------------------
-// Node: analyzeHousing
+// Node: analyzeBenefits — parallel RAG fetch, single LLM call
 // ---------------------------------------------------------------------------
 
-async function analyzeHousing(state: State): Promise<Partial<State>> {
-  console.log('[pipeline] analyzeHousing start')
-  try {
-    const chunks = await retrieveChunks(
-      'HUD-VASH housing voucher eligibility homeless at-risk veteran discharge',
-      { benefit_categories: ['housing'], state: state.profile.state }
-    )
-    const det = await determineBenefit(state.profile, chunks, 'hud_vash', 'HUD-VASH Housing Voucher')
-    return { benefits: [det] }
-  } catch (err) {
-    console.error('[pipeline] analyzeHousing failed:', err instanceof Error ? err.message : err)
-    throw err
-  }
-}
+async function analyzeBenefits(state: State): Promise<Partial<State>> {
+  console.log('[pipeline] analyzeBenefits start — fetching RAG context for 6 benefits in parallel')
+  const [housingChunks, healthcareChunks, educationChunks, disabilityChunks, employmentChunks, financialChunks] =
+    await Promise.all([
+      retrieveChunks('HUD-VASH housing voucher eligibility homeless at-risk veteran discharge', { benefit_categories: ['housing'], state: state.profile.state }),
+      retrieveChunks('VA healthcare enrollment eligibility priority group discharge', { benefit_categories: ['healthcare'] }),
+      retrieveChunks('Post-9/11 GI Bill chapter 33 education eligibility years service discharge', { benefit_categories: ['education'] }),
+      retrieveChunks('VA disability compensation service connected rating eligibility', { benefit_categories: [] }),
+      retrieveChunks('vocational rehabilitation chapter 31 employment disability rating', { benefit_categories: [] }),
+      retrieveChunks('VA pension income wartime service financial benefit eligibility', { benefit_categories: ['financial'] }),
+    ])
+  console.log('[pipeline] RAG complete — sending single LLM call')
 
-// ---------------------------------------------------------------------------
-// Node: analyzeHealthcare
-// ---------------------------------------------------------------------------
+  const determinations = await determineAllBenefits(state.profile, [
+    { benefitId: 'hud_vash',          benefitName: 'HUD-VASH Housing Voucher',                       chunks: housingChunks },
+    { benefitId: 'va_healthcare',     benefitName: 'VA Healthcare Enrollment',                        chunks: healthcareChunks },
+    { benefitId: 'post_911_gi_bill',  benefitName: 'Post-9/11 GI Bill (Chapter 33)',                  chunks: educationChunks },
+    { benefitId: 'va_disability_comp',benefitName: 'VA Disability Compensation',                      chunks: disabilityChunks },
+    { benefitId: 'voc_rehab',         benefitName: 'Vocational Rehabilitation & Employment (Chapter 31)', chunks: employmentChunks },
+    { benefitId: 'va_pension',        benefitName: 'VA Pension (Non-Service-Connected)',               chunks: financialChunks },
+  ])
 
-async function analyzeHealthcare(state: State): Promise<Partial<State>> {
-  console.log('[pipeline] analyzeHealthcare start')
-  try {
-    const chunks = await retrieveChunks(
-      'VA healthcare enrollment eligibility priority group discharge',
-      { benefit_categories: ['healthcare'] }
-    )
-    const det = await determineBenefit(state.profile, chunks, 'va_healthcare', 'VA Healthcare Enrollment')
-    return { benefits: [det] }
-  } catch (err) {
-    console.error('[pipeline] analyzeHealthcare failed:', err instanceof Error ? err.message : err)
-    throw err
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Node: analyzeEducation
-// ---------------------------------------------------------------------------
-
-async function analyzeEducation(state: State): Promise<Partial<State>> {
-  console.log('[pipeline] analyzeEducation start')
-  try {
-    const chunks = await retrieveChunks(
-      'Post-9/11 GI Bill chapter 33 education eligibility years service discharge',
-      { benefit_categories: ['education'] }
-    )
-    const det = await determineBenefit(state.profile, chunks, 'post_911_gi_bill', 'Post-9/11 GI Bill (Chapter 33)')
-    return { benefits: [det] }
-  } catch (err) {
-    console.error('[pipeline] analyzeEducation failed:', err instanceof Error ? err.message : err)
-    throw err
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Node: analyzeDisability
-// ---------------------------------------------------------------------------
-
-async function analyzeDisability(state: State): Promise<Partial<State>> {
-  console.log('[pipeline] analyzeDisability start')
-  try {
-    const chunks = await retrieveChunks(
-      'VA disability compensation service connected rating eligibility',
-      { benefit_categories: [] }
-    )
-    const det = await determineBenefit(state.profile, chunks, 'va_disability_comp', 'VA Disability Compensation')
-    return { benefits: [det] }
-  } catch (err) {
-    console.error('[pipeline] analyzeDisability failed:', err instanceof Error ? err.message : err)
-    throw err
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Node: analyzeEmployment
-// ---------------------------------------------------------------------------
-
-async function analyzeEmployment(state: State): Promise<Partial<State>> {
-  console.log('[pipeline] analyzeEmployment start')
-  try {
-    const chunks = await retrieveChunks(
-      'vocational rehabilitation chapter 31 employment disability rating',
-      { benefit_categories: [] }
-    )
-    const det = await determineBenefit(
-      state.profile,
-      chunks,
-      'voc_rehab',
-      'Vocational Rehabilitation & Employment (Chapter 31)'
-    )
-    return { benefits: [det] }
-  } catch (err) {
-    console.error('[pipeline] analyzeEmployment failed:', err instanceof Error ? err.message : err)
-    throw err
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Node: analyzeFinancial
-// ---------------------------------------------------------------------------
-
-async function analyzeFinancial(state: State): Promise<Partial<State>> {
-  console.log('[pipeline] analyzeFinancial start')
-  try {
-    const chunks = await retrieveChunks(
-      'VA pension income wartime service financial benefit eligibility',
-      { benefit_categories: ['financial'] }
-    )
-    const det = await determineBenefit(
-      state.profile,
-      chunks,
-      'va_pension',
-      'VA Pension (Non-Service-Connected)'
-    )
-    return { benefits: [det] }
-  } catch (err) {
-    console.error('[pipeline] analyzeFinancial failed:', err instanceof Error ? err.message : err)
-    throw err
-  }
+  console.log('[pipeline] analyzeBenefits complete — determinations:', determinations.length)
+  return { benefits: determinations }
 }
 
 // ---------------------------------------------------------------------------
@@ -389,32 +295,14 @@ function routeDischargeCheck(state: State): string {
 
 const graph = new StateGraph(PipelineState)
   .addNode('enrichProfile', enrichProfile)
-  .addNode('analyzeHousing', analyzeHousing)
-  .addNode('analyzeHealthcare', analyzeHealthcare)
-  .addNode('analyzeEducation', analyzeEducation)
-  .addNode('analyzeDisability', analyzeDisability)
-  .addNode('analyzeEmployment', analyzeEmployment)
-  .addNode('analyzeFinancial', analyzeFinancial)
+  .addNode('analyzeBenefits', analyzeBenefits)
   .addNode('mapSynergies', mapSynergies)
   .addNode('checkDischargeUpgrade', checkDischargeUpgrade)
   .addNode('prioritizeBenefits', prioritizeBenefits)
   .addNode('generateReport', generateReport)
-  // enrichProfile -> 6 parallel analysis nodes
   .addEdge(START, 'enrichProfile')
-  .addEdge('enrichProfile', 'analyzeHousing')
-  .addEdge('enrichProfile', 'analyzeHealthcare')
-  .addEdge('enrichProfile', 'analyzeEducation')
-  .addEdge('enrichProfile', 'analyzeDisability')
-  .addEdge('enrichProfile', 'analyzeEmployment')
-  .addEdge('enrichProfile', 'analyzeFinancial')
-  // all 6 converge to mapSynergies
-  .addEdge('analyzeHousing', 'mapSynergies')
-  .addEdge('analyzeHealthcare', 'mapSynergies')
-  .addEdge('analyzeEducation', 'mapSynergies')
-  .addEdge('analyzeDisability', 'mapSynergies')
-  .addEdge('analyzeEmployment', 'mapSynergies')
-  .addEdge('analyzeFinancial', 'mapSynergies')
-  // conditional discharge upgrade check
+  .addEdge('enrichProfile', 'analyzeBenefits')
+  .addEdge('analyzeBenefits', 'mapSynergies')
   .addConditionalEdges('mapSynergies', routeDischargeCheck, {
     check: 'checkDischargeUpgrade',
     skip: 'prioritizeBenefits',
