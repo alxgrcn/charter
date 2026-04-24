@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import ChatMessage from './components/ChatMessage'
 import ChatInput from './components/ChatInput'
 import BenefitReport from './components/BenefitReport'
+import ThemeToggle from './components/ThemeToggle'
 import type { VeteranProfile, ReportJSON } from '../types/charter'
 
 const LANDING_CHIPS = [
@@ -125,18 +126,19 @@ export default function ChatPage() {
 
   if (isLanding) {
     return (
-      <div className="flex flex-col h-[100dvh] items-center justify-center" style={{ background: 'linear-gradient(160deg, #f9f7f4 0%, #f0ede8 100%)' }}>
+      <div className="flex flex-col h-[100dvh] items-center justify-center" style={{ background: 'linear-gradient(160deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%)' }}>
+        <ThemeToggle />
         <div className="w-full max-w-2xl px-6 flex flex-col items-center gap-5 -mt-[5vh]">
           <button
             onClick={() => handleSend(ROTATING_QUESTIONS[questionIndex])}
             style={{ fontFamily: 'var(--font-playfair, Georgia, serif)' }}
-            className={`text-5xl font-light text-zinc-800 text-center leading-snug transition-opacity duration-700 ${
+            className={`text-5xl font-light text-zinc-800 dark:text-gray-100 text-center leading-snug transition-opacity duration-700 ${
               questionVisible ? 'opacity-100' : 'opacity-0'
             }`}
           >
             {ROTATING_QUESTIONS[questionIndex]}
           </button>
-          <p className="text-sm text-gray-400 text-center tracking-wide">Free. Private. Built for veterans.</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 text-center tracking-wide">Free. Private. Built for veterans.</p>
           <ChatInput onSend={handleSend} disabled={loading} chips={chips} isLanding />
           <div className="flex flex-wrap justify-center gap-2 max-w-2xl mx-auto px-4">
             {LANDING_CHIPS.map((chip) => (
@@ -144,24 +146,25 @@ export default function ChatPage() {
                 key={chip}
                 onClick={() => handleSend(chip)}
                 disabled={loading}
-                className="rounded-full bg-gray-800 border border-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-700 hover:scale-105 transition-all duration-150"
+                className="rounded-full bg-gray-800 dark:bg-gray-700 border border-gray-700 dark:border-gray-600 px-4 py-2 text-sm text-white hover:bg-gray-700 dark:hover:bg-gray-600 hover:scale-105 transition-all duration-150"
               >
                 {chip}
               </button>
             ))}
           </div>
-          <p className="text-xs text-gray-400 text-center">Used by veteran counselors at US Vets</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center">Used by veteran counselors at US Vets</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-[100dvh]" style={{ background: 'linear-gradient(160deg, #f9f7f4 0%, #f0ede8 100%)' }}>
-      <header className="flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-gray-100 px-4 py-3">
+    <div className="flex flex-col h-[100dvh]" style={{ background: 'linear-gradient(160deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%)' }}>
+      <ThemeToggle />
+      <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 px-4 py-3">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-base font-semibold text-gray-900">Charter</h1>
-          <p className="text-xs text-gray-400">Veteran Benefits Navigator</p>
+          <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Charter</h1>
+          <p className="text-xs text-gray-400 dark:text-gray-500">Veteran Benefits Navigator</p>
         </div>
       </header>
 
@@ -173,7 +176,7 @@ export default function ChatPage() {
           {report && <BenefitReport report={report} />}
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-white border border-gray-100 shadow-sm rounded-2xl rounded-bl-sm px-4 py-3">
+              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-2xl rounded-bl-sm px-4 py-3">
                 <span className="flex gap-1 items-center">
                   <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:0ms]" />
                   <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:150ms]" />

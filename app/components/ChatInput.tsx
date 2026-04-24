@@ -40,7 +40,7 @@ export default function ChatInput({ onSend, disabled, chips, isLanding }: Props)
   return (
     <div className={isLanding
       ? "w-full"
-      : "sticky bottom-0 bg-white/80 backdrop-blur-sm border-t border-gray-100 px-4 py-3"
+      : "sticky bottom-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-t border-gray-100 dark:border-gray-800 px-4 py-3"
     }>
       {chips && chips.length > 0 && (
         <div className="flex flex-wrap gap-2 max-w-2xl mx-auto pb-2">
@@ -49,7 +49,7 @@ export default function ChatInput({ onSend, disabled, chips, isLanding }: Props)
               key={chip}
               onClick={() => onSend(chip)}
               disabled={disabled}
-              className="rounded-full border border-zinc-300 bg-white px-3 py-1 text-sm text-zinc-700 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+              className="rounded-full border border-zinc-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-sm text-zinc-700 dark:text-gray-300 hover:border-blue-400 hover:bg-blue-50 dark:hover:border-blue-500 dark:hover:bg-blue-950 transition-colors"
             >
               {chip}
             </button>
@@ -65,12 +65,12 @@ export default function ChatInput({ onSend, disabled, chips, isLanding }: Props)
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder="Message Charter…"
-          className="flex-1 resize-none rounded-2xl border border-gray-200 bg-white shadow-md px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 leading-relaxed"
+          className="flex-1 resize-none rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 disabled:opacity-50 leading-relaxed"
         />
         <button
           onClick={submit}
           disabled={disabled || !value.trim()}
-          className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-gray-900 text-white disabled:opacity-40 hover:bg-gray-700 transition-colors"
+          className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-gray-900 dark:bg-gray-700 text-white disabled:opacity-40 hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
           aria-label="Send"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
