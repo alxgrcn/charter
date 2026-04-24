@@ -34,8 +34,9 @@ function detectChips(msg: { role: string; content: string } | undefined): string
   if (!msg || msg.role !== 'assistant') return []
   const text = msg.content.toLowerCase()
   if (/branch(\s+of\s+service)?/.test(text)) return ['Army', 'Navy', 'Marines', 'Air Force', 'Coast Guard', 'Space Force']
-  if (/discharge/.test(text)) return ['Honorable', 'General (Under Honorable)', 'Other Than Honorable', 'Not Sure']
+  if (/discharge/.test(text)) return ['Honorable', 'General (Under Honorable)', 'Other Than Honorable', 'Medical']
   if (/housing/.test(text)) return ['Stable housing', 'At risk', 'Currently homeless', 'Living with family/friends']
+  if (/employ|working|current(ly)?\s+work/.test(text)) return ['Currently employed', 'Employed but limited hours', 'Not currently employed', 'Unable to work']
   return []
 }
 
@@ -127,8 +128,8 @@ export default function ChatPage() {
   if (isLanding) {
     return (
       <div className="flex flex-col h-[100dvh]" style={{ background: 'linear-gradient(160deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%)' }}>
-        <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 px-4 py-3">
-          <div className="max-w-2xl mx-auto flex items-center justify-between">
+        <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 py-3 px-6 [@media(min-width:900px)]:px-[200px]">
+          <div className="flex items-center justify-between">
             <div>
               <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Charter</h1>
               <p className="text-xs text-gray-400 dark:text-gray-500">Veteran Benefits Navigator</p>
@@ -170,8 +171,8 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-[100dvh]" style={{ background: 'linear-gradient(160deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%)' }}>
-      <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 px-4 py-3">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
+      <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 py-3 px-6 [@media(min-width:900px)]:px-[200px]">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Charter</h1>
             <p className="text-xs text-gray-400 dark:text-gray-500">Veteran Benefits Navigator</p>
