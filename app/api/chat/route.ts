@@ -4,8 +4,11 @@ import { z } from 'zod'
 import { runPipeline } from '../../../core/pipeline'
 import type { VeteranProfile, ReportJSON } from '../../../types/charter'
 import { redact } from '../../../lib/redact'
+import { auditLog } from '../../../lib/auditLog'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+const SENSITIVE_FIELDS = new Set(['name', 'phone', 'dob', 'health_concerns', 'discharge_status'])
 
 // ---------------------------------------------------------------------------
 // Input validation
@@ -290,6 +293,9 @@ export async function POST(req: NextRequest) {
             // Migration 003 (supabase/migrations/003_lead_capture.sql) to be run in Supabase
             // before these values will persist to veteran_profiles.
             profileUpdates = { ...profileUpdates, [input.field]: value }
+            if (SENSITIVE_FIELDS.has(input.field)) {
+              void auditLog({ actor_role: 'system', action: 'field_recorded', meta: { field_name: input.field, session_id: profile.session_id as string | undefined } })
+            }
             toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'recorded' })
           }
 
@@ -314,8 +320,10 @@ export async function POST(req: NextRequest) {
             console.log('[charter/chat] runPipeline triggered — populated fields:', populatedFields.join(', '))
             const pipelineStart = Date.now()
             console.log('[charter/chat] runPipeline start — t=0ms')
+            void auditLog({ actor_role: 'system', action: 'pipeline_started', meta: { session_id: mergedProfile.session_id ?? undefined } })
             try {
               report = await runPipeline(mergedProfile)
+              void auditLog({ actor_role: 'system', action: 'report_generated', meta: { session_id: mergedProfile.session_id ?? undefined, benefits_count: report.benefits.length } })
               const elapsed = Date.now() - pipelineStart
               console.log(`[charter/chat] runPipeline complete — elapsed=${elapsed}ms`)
               toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Analysis complete. Present the key findings to the veteran.' })
