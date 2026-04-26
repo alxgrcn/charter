@@ -46,12 +46,9 @@ export default function BenefitReport({ report }: Props) {
         </div>
       )}
 
-      <button
-        disabled
-        className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-400 opacity-50 cursor-not-allowed"
-      >
-        Download PDF (coming soon)
-      </button>
+      <p className="text-xs text-zinc-500 leading-relaxed mt-1">
+        This report is educational and designed to help identify possible benefits or next steps. It is not a final eligibility determination.
+      </p>
     </div>
   )
 }
