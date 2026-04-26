@@ -47,6 +47,7 @@ type AnalyzeBody = z.infer<typeof BodySchema>
 const CRISIS_KEYWORDS = [
   'suicide', 'suicidal', 'kill myself', 'end my life', "don't want to live",
   'harm myself', 'self-harm', 'self harm', 'want to die', 'no reason to live',
+  "don't see the point", "no point anymore", "can't go on", 'give up on life',
   'hopeless', 'crisis',
 ]
 
