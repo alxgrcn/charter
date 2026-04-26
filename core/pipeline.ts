@@ -86,7 +86,7 @@ async function analyzeBenefits(state: State): Promise<Partial<State>> {
   console.log('[pipeline] analyzeBenefits start — fetching RAG context for 6 benefits in parallel')
   const [housingChunks, healthcareChunks, educationChunks, disabilityChunks, employmentChunks, financialChunks] =
     await Promise.all([
-      retrieveChunks('HUD-VASH housing voucher eligibility homeless at-risk veteran discharge', { benefit_categories: ['housing'], state: state.profile.state }),
+      retrieveChunks('HUD-VASH housing voucher eligibility homeless at-risk transitional housing veteran discharge', { benefit_categories: ['housing'], state: state.profile.state }),
       retrieveChunks('VA healthcare enrollment eligibility priority group discharge', { benefit_categories: ['healthcare'] }),
       retrieveChunks('Post-9/11 GI Bill chapter 33 education eligibility years service discharge', { benefit_categories: ['education'] }),
       retrieveChunks('VA disability compensation service connected rating eligibility', { benefit_categories: [] }),
