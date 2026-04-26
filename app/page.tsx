@@ -184,7 +184,7 @@ export default function ChatPage() {
           {messages.map((msg, i) => (
             <ChatMessage key={i} role={msg.role} content={msg.content} />
           ))}
-          {report && <BenefitReport report={report} />}
+          {report && <BenefitReport report={report} sessionId={profile.session_id ?? ''} />}
           {loading && (
             <div className="flex justify-start">
               <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-2xl rounded-bl-sm px-4 py-3">
