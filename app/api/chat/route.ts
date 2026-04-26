@@ -258,13 +258,20 @@ export async function POST(req: NextRequest) {
 
     const MAX_LOOPS = 10
     for (let i = 0; i < MAX_LOOPS; i++) {
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-        tools: TOOLS,
-        messages: currentMessages,
-      })
+      let response: Anthropic.Message
+      try {
+        response = await client.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+          tools: TOOLS,
+          messages: currentMessages,
+        })
+      } catch (err) {
+        console.error('[charter/chat] Anthropic API error:', redact(err instanceof Error ? { message: err.message } : err))
+        lastAssistantText = "We ran into an issue processing your request. Please try again in a moment, or contact a Veterans Service Officer at 1-800-827-1000."
+        break
+      }
 
       const textBlock = response.content.find((b) => b.type === 'text')
       if (textBlock?.type === 'text' && textBlock.text) lastAssistantText = textBlock.text
@@ -329,17 +336,17 @@ export async function POST(req: NextRequest) {
               toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Analysis complete. Present the key findings to the veteran.' })
             } catch (err) {
               const elapsed = Date.now() - pipelineStart
-              console.error(`[charter/chat] runPipeline FAILED — elapsed=${elapsed}ms`, err)
-              const msg = err instanceof Error ? err.message : String(err)
+              console.error(`[charter/chat] runPipeline FAILED — elapsed=${elapsed}ms`, redact(err instanceof Error ? { message: err.message } : err))
               toolResults.push({
                 type: 'tool_result',
                 tool_use_id: block.id,
-                content: `Analysis failed (${elapsed}ms): ${msg}. Let the veteran know you encountered an issue and suggest they contact a VSO.`,
+                content: 'Analysis could not be completed due to a technical issue. Let the veteran know you encountered a problem and suggest they contact a VSO at 1-800-827-1000 for immediate help.',
               })
             }
           }
         }
 
+        if (toolResults.length === 0) break
         currentMessages.push({ role: 'user', content: toolResults })
       }
     }
@@ -353,6 +360,6 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error('[chat/route]:', redact(err instanceof Error ? { message: err.message } : err))
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'We ran into an issue processing your request. Please try again in a moment.' }, { status: 500 })
   }
 }
