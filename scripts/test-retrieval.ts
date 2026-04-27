@@ -6,9 +6,15 @@
 import { retrieveChunks } from '../lib/rag'
 
 const QUERIES = [
-  'HUD-VASH eligibility requirements for homeless veterans',
-  'Post-9/11 GI Bill service requirements',
-  'VA Healthcare priority groups',
+  'what mental health programs are available for veterans with PTSD',
+  'can a veteran with OTH discharge get mental health care',
+  'VA substance use treatment for veterans California',
+  'military sexual trauma counseling no documentation',
+  'veteran in crisis 988 California',
+  'Vet Center counseling no enrollment required',
+  'caregiver support veteran mental health',
+  'peer support veteran community programs Los Angeles',
+  'residential mental health treatment veteran inpatient',
 ]
 
 async function main() {
