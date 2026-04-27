@@ -32,11 +32,11 @@ export async function readDocument(filePath: string): Promise<string> {
     return raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
   }
 
-  if (ext === '.txt') {
+  if (ext === '.txt' || ext === '.md') {
     return fs.readFile(filePath, 'utf-8')
   }
 
-  throw new Error(`Unsupported file extension: ${ext}. Supported: .pdf, .html, .txt`)
+  throw new Error(`Unsupported file extension: ${ext}. Supported: .pdf, .html, .txt, .md`)
 }
 
 export function chunkText(text: string, chunkSize = 500, overlap = 50): string[] {
