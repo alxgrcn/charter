@@ -69,7 +69,7 @@ async function main() {
     console.log()
     console.log('  ACTION REQUIRED: ANTHROPIC_API_KEY in .env.local is expired or revoked.')
     console.log('  Generate a new key at console.anthropic.com and update .env.local.')
-    console.log('  Confidence assertions (HUD-VASH > 0.6, VA Healthcare > 0.6) will be')
+    console.log('  Confidence assertions (va_mh_outpatient > 0.6, va_ptsd > 0.6) will be')
     console.log('  skipped until a valid key is present.')
   }
   console.log()
@@ -90,8 +90,8 @@ async function main() {
   }
   console.log()
 
-  const hudVash  = report.benefits.find((b) => b.benefit_id === 'hud_vash')
-  const vaHealth = report.benefits.find((b) => b.benefit_id === 'va_healthcare')
+  const mhOutpatient = report.benefits.find((b) => b.benefit_id === 'va_mh_outpatient')
+  const ptsd         = report.benefits.find((b) => b.benefit_id === 'va_ptsd')
 
   const results: AssertResult[] = [
     assert(
@@ -100,29 +100,29 @@ async function main() {
       `benefits.length = ${report.benefits.length}`
     ),
     assert(
-      'HUD-VASH present in benefits array',
-      hudVash !== undefined,
-      hudVash ? `qualifies=${hudVash.qualifies}` : 'not found'
+      'va_mh_outpatient present in benefits array',
+      mhOutpatient !== undefined,
+      mhOutpatient ? `qualifies=${mhOutpatient.qualifies}` : 'not found'
     ),
     llmAvailable
       ? assert(
-          'HUD-VASH confidence > 0.6',
-          (hudVash?.confidence ?? 0) > 0.6,
-          `confidence = ${(hudVash?.confidence ?? 0).toFixed(3)}`
+          'va_mh_outpatient confidence > 0.6',
+          (mhOutpatient?.confidence ?? 0) > 0.6,
+          `confidence = ${(mhOutpatient?.confidence ?? 0).toFixed(3)}`
         )
-      : skip('HUD-VASH confidence > 0.6', 'skipped — ANTHROPIC_API_KEY invalid'),
+      : skip('va_mh_outpatient confidence > 0.6', 'skipped — ANTHROPIC_API_KEY invalid'),
     assert(
-      'VA Healthcare present in benefits array',
-      vaHealth !== undefined,
-      vaHealth ? `qualifies=${vaHealth.qualifies}` : 'not found'
+      'va_ptsd present in benefits array',
+      ptsd !== undefined,
+      ptsd ? `qualifies=${ptsd.qualifies}` : 'not found'
     ),
     llmAvailable
       ? assert(
-          'VA Healthcare confidence > 0.6',
-          (vaHealth?.confidence ?? 0) > 0.6,
-          `confidence = ${(vaHealth?.confidence ?? 0).toFixed(3)}`
+          'va_ptsd confidence > 0.6',
+          (ptsd?.confidence ?? 0) > 0.6,
+          `confidence = ${(ptsd?.confidence ?? 0).toFixed(3)}`
         )
-      : skip('VA Healthcare confidence > 0.6', 'skipped — ANTHROPIC_API_KEY invalid'),
+      : skip('va_ptsd confidence > 0.6', 'skipped — ANTHROPIC_API_KEY invalid'),
     assert(
       'discharge_upgrade_flag field exists',
       typeof report.discharge_upgrade_flag === 'boolean',

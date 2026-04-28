@@ -83,25 +83,29 @@ function enrichProfile(state: State): Partial<State> {
 // ---------------------------------------------------------------------------
 
 async function analyzeBenefits(state: State): Promise<Partial<State>> {
-  console.log('[pipeline] analyzeBenefits start — fetching RAG context for 6 benefits in parallel')
-  const [housingChunks, healthcareChunks, educationChunks, disabilityChunks, employmentChunks, financialChunks] =
+  console.log('[pipeline] analyzeBenefits start — fetching RAG context for 8 benefits in parallel')
+  const [outpatientChunks, residentialChunks, vetCenterChunks, ptsdChunks, sudChunks, mstChunks, caregiverChunks, peerSupportChunks] =
     await Promise.all([
-      retrieveChunks('HUD-VASH housing voucher eligibility homeless at-risk transitional housing veteran discharge', { benefit_categories: ['housing'], state: state.profile.state }),
-      retrieveChunks('VA healthcare enrollment eligibility priority group discharge', { benefit_categories: ['healthcare'] }),
-      retrieveChunks('Post-9/11 GI Bill chapter 33 education eligibility years service discharge', { benefit_categories: ['education'] }),
-      retrieveChunks('VA disability compensation service connected rating eligibility', { benefit_categories: [] }),
-      retrieveChunks('vocational rehabilitation chapter 31 employment disability rating', { benefit_categories: [] }),
-      retrieveChunks('VA pension income wartime service financial benefit eligibility', { benefit_categories: ['financial'] }),
+      retrieveChunks('VA mental health outpatient services veterans', { benefit_categories: ['va_mh_outpatient'] }),
+      retrieveChunks('VA residential mental health programs RRTP inpatient', { benefit_categories: ['va_mh_residential'] }),
+      retrieveChunks('Vet Center counseling no enrollment required combat', { benefit_categories: ['vet_center'] }),
+      retrieveChunks('VA PTSD specialty care treatment programs evidence-based', { benefit_categories: ['va_ptsd'] }),
+      retrieveChunks('VA substance use disorder treatment veterans SUD', { benefit_categories: ['va_sud'] }),
+      retrieveChunks('military sexual trauma counseling MST care no documentation', { benefit_categories: ['mst_counseling'] }),
+      retrieveChunks('VA caregiver support program family PCAFC', { benefit_categories: ['caregiver_support'] }),
+      retrieveChunks('peer support veteran community programs California US Vets', { benefit_categories: ['peer_support'] }),
     ])
   console.log('[pipeline] RAG complete — sending single LLM call')
 
   const determinations = await determineAllBenefits(state.profile, [
-    { benefitId: 'hud_vash',          benefitName: 'HUD-VASH Housing Voucher',                       chunks: housingChunks },
-    { benefitId: 'va_healthcare',     benefitName: 'VA Healthcare Enrollment',                        chunks: healthcareChunks },
-    { benefitId: 'post_911_gi_bill',  benefitName: 'Post-9/11 GI Bill (Chapter 33)',                  chunks: educationChunks },
-    { benefitId: 'va_disability_comp',benefitName: 'VA Disability Compensation',                      chunks: disabilityChunks },
-    { benefitId: 'voc_rehab',         benefitName: 'Vocational Rehabilitation & Employment (Chapter 31)', chunks: employmentChunks },
-    { benefitId: 'va_pension',        benefitName: 'VA Pension (Non-Service-Connected)',               chunks: financialChunks },
+    { benefitId: 'va_mh_outpatient',  benefitName: 'VA Mental Health Outpatient Services',          chunks: outpatientChunks },
+    { benefitId: 'va_mh_residential', benefitName: 'VA Residential Mental Health Programs',          chunks: residentialChunks },
+    { benefitId: 'vet_center',        benefitName: 'Vet Center Counseling',                          chunks: vetCenterChunks },
+    { benefitId: 'va_ptsd',           benefitName: 'VA PTSD Specialty Care',                         chunks: ptsdChunks },
+    { benefitId: 'va_sud',            benefitName: 'VA Substance Use Disorder Treatment',             chunks: sudChunks },
+    { benefitId: 'mst_counseling',    benefitName: 'Military Sexual Trauma Counseling',               chunks: mstChunks },
+    { benefitId: 'caregiver_support', benefitName: 'VA Caregiver Support Program',                   chunks: caregiverChunks },
+    { benefitId: 'peer_support',      benefitName: 'Peer Support and Community Programs',            chunks: peerSupportChunks },
   ])
 
   console.log('[pipeline] analyzeBenefits complete — determinations:', determinations.length)
@@ -121,59 +125,75 @@ function mapSynergies(state: State): Partial<State> {
     benefits.filter((b) => b.qualifies === 'yes' || b.qualifies === 'possibly').map((b) => b.benefit_id)
   )
 
-  if (qualifyingIds.has('hud_vash') && qualifyingIds.has('va_healthcare')) {
+  if (qualifyingIds.has('va_ptsd') && qualifyingIds.has('va_mh_outpatient')) {
     notes.push(
-      'HUD-VASH + VA Healthcare: VA case managers who administer HUD-VASH vouchers can also coordinate VA healthcare enrollment. Request both in a single VA intake appointment.'
+      'VA PTSD Specialty Care + Outpatient Mental Health: PTSD Clinical Teams are embedded within VA outpatient mental health. A single VA intake appointment can connect a veteran to both general mental health services and PTSD-specific therapy.'
     )
   }
 
-  if (qualifyingIds.has('va_disability_comp') && qualifyingIds.has('voc_rehab')) {
+  if (qualifyingIds.has('va_sud') && qualifyingIds.has('va_ptsd')) {
     notes.push(
-      'Disability Compensation + VR&E: Veterans receiving disability compensation may also use Vocational Rehabilitation simultaneously. VR&E subsistence allowance is separate from disability pay.'
+      'SUD Treatment + PTSD Care: Co-occurring PTSD and substance use disorder is common in veterans. VA offers integrated dual-diagnosis treatment that addresses both simultaneously — a veteran should not have to choose one over the other.'
     )
   }
 
-  if (qualifyingIds.has('va_disability_comp') && qualifyingIds.has('va_healthcare')) {
+  if (qualifyingIds.has('mst_counseling') && qualifyingIds.has('vet_center')) {
     notes.push(
-      'Disability Compensation + VA Healthcare: Veterans with a service-connected disability rating receive Priority Group 1–3 healthcare with reduced or no copays. Apply for both simultaneously.'
+      'MST Counseling + Vet Center: MST-related care is available at both VA Medical Centers and Vet Centers. Vet Centers require no enrollment and may feel more accessible as a first step. An MST Coordinator at any VAMC can provide a warm referral.'
     )
   }
 
-  if (qualifyingIds.has('post_911_gi_bill') && qualifyingIds.has('voc_rehab')) {
+  if (qualifyingIds.has('va_mh_residential') && qualifyingIds.has('va_mh_outpatient')) {
     notes.push(
-      'GI Bill + VR&E: Veterans who qualify for both should consult a VSO. In most cases, VR&E (Chapter 31) provides a higher monthly housing allowance than Post-9/11 GI Bill for veterans with disabilities.'
+      'Residential + Outpatient Care: Residential programs (RRTP) typically transition veterans into outpatient mental health care after discharge. Establishing an outpatient mental health relationship before entering residential care can smooth this transition.'
     )
   }
 
-  // Build priority action list by urgency tier
-  const housingBenefit = benefits.find((b) => b.benefit_id === 'hud_vash')
-  if (housingBenefit?.qualifies === 'yes' || housingBenefit?.qualifies === 'possibly') {
-    actions.push('URGENT: Apply for HUD-VASH — housing instability is the highest-priority need')
+  if (qualifyingIds.has('caregiver_support') && qualifyingIds.has('va_mh_outpatient')) {
+    notes.push(
+      'Caregiver Support + Mental Health Care: VA Caregiver Support includes mental health counseling for the caregiver. When a veteran begins outpatient mental health care, their caregiver can simultaneously enroll in the Caregiver Support Program.'
+    )
   }
 
-  const healthBenefit = benefits.find((b) => b.benefit_id === 'va_healthcare')
-  if (healthBenefit?.qualifies === 'yes') {
-    actions.push('Apply for VA Healthcare enrollment (form 10-10EZ) — fast, typically 1–2 weeks')
+  // Build priority action list — guide, don't decide language throughout
+  const outpatientBenefit = benefits.find((b) => b.benefit_id === 'va_mh_outpatient')
+  if (outpatientBenefit?.qualifies === 'yes' || outpatientBenefit?.qualifies === 'possibly') {
+    actions.push('Contact nearest VA Medical Center or CBOC to ask about same-day mental health services — walk-in available at most facilities')
   }
 
-  const disabilityBenefit = benefits.find((b) => b.benefit_id === 'va_disability_comp')
-  if (disabilityBenefit?.qualifies === 'yes' || disabilityBenefit?.qualifies === 'possibly') {
-    actions.push('File or update VA disability claim — retroactive pay dates from claim filing date')
+  const ptsdBenefit = benefits.find((b) => b.benefit_id === 'va_ptsd')
+  if (ptsdBenefit?.qualifies === 'yes' || ptsdBenefit?.qualifies === 'possibly') {
+    actions.push('Ask for a referral to the PTSD Clinical Team at the nearest VAMC — no formal diagnosis required to begin')
   }
 
-  const financialBenefit = benefits.find((b) => b.benefit_id === 'va_pension')
-  if (financialBenefit?.qualifies === 'yes') {
-    actions.push('Apply for VA Pension — income support while other benefits process')
+  const vetCenterBenefit = benefits.find((b) => b.benefit_id === 'vet_center')
+  if (vetCenterBenefit?.qualifies === 'yes' || vetCenterBenefit?.qualifies === 'possibly') {
+    actions.push('Walk in to a Vet Center without an appointment — or call 1-877-WAR-VETS (1-877-927-8387), available 24/7')
   }
 
-  const educationBenefit = benefits.find((b) => b.benefit_id === 'post_911_gi_bill')
-  if (educationBenefit?.qualifies === 'yes') {
-    actions.push('Submit GI Bill application (form 22-1990) before next enrollment period')
+  const sudBenefit = benefits.find((b) => b.benefit_id === 'va_sud')
+  if (sudBenefit?.qualifies === 'yes' || sudBenefit?.qualifies === 'possibly') {
+    actions.push('Contact nearest VAMC and ask for the SUD clinic — same-day mental health intake can include substance use concerns')
   }
 
-  const vocBenefit = benefits.find((b) => b.benefit_id === 'voc_rehab')
-  if (vocBenefit?.qualifies === 'yes') {
-    actions.push('Contact VR&E counselor to open a Chapter 31 case')
+  const mstBenefit = benefits.find((b) => b.benefit_id === 'mst_counseling')
+  if (mstBenefit?.qualifies === 'yes' || mstBenefit?.qualifies === 'possibly') {
+    actions.push('Ask to speak with the MST Coordinator at the nearest VA Medical Center — or contact a Vet Center directly, no appointment needed')
+  }
+
+  const residentialBenefit = benefits.find((b) => b.benefit_id === 'va_mh_residential')
+  if (residentialBenefit?.qualifies === 'yes' || residentialBenefit?.qualifies === 'possibly') {
+    actions.push('Ask a VA mental health provider about residential treatment options — a referral can be requested at any VAMC intake')
+  }
+
+  const caregiverBenefit = benefits.find((b) => b.benefit_id === 'caregiver_support')
+  if (caregiverBenefit?.qualifies === 'yes' || caregiverBenefit?.qualifies === 'possibly') {
+    actions.push('Call the VA Caregiver Support Line: 1-855-260-3274 — or contact the Caregiver Support Coordinator at the nearest VAMC')
+  }
+
+  const peerBenefit = benefits.find((b) => b.benefit_id === 'peer_support')
+  if (peerBenefit?.qualifies === 'yes' || peerBenefit?.qualifies === 'possibly') {
+    actions.push('Reach out to US Vets at usvets.org or call 1-877-WAR-VETS to connect with peer support regardless of VA enrollment status')
   }
 
   return { synergy_notes: notes, priority_actions: actions }
@@ -227,16 +247,18 @@ function checkDischargeUpgrade(state: State): Partial<State> {
 // ---------------------------------------------------------------------------
 
 function prioritizeBenefits(state: State): Partial<State> {
-  const PRIORITY_ORDER = ['hud_vash', 'va_healthcare', 'va_pension', 'va_disability_comp', 'voc_rehab', 'post_911_gi_bill', 'discharge_upgrade']
+  const PRIORITY_ORDER = ['va_mh_outpatient', 'va_ptsd', 'vet_center', 'mst_counseling', 'va_sud', 'va_mh_residential', 'caregiver_support', 'peer_support', 'discharge_upgrade']
 
   // Re-sort existing actions by matching benefit_id keywords, then deduplicate
   const idKeywords: Record<string, string> = {
-    hud_vash: 'hud-vash',
-    va_healthcare: '10-10ez',
-    va_pension: 'pension',
-    va_disability_comp: 'disability claim',
-    voc_rehab: 'vr&e',
-    post_911_gi_bill: 'gi bill',
+    va_mh_outpatient:  'same-day mental health',
+    va_ptsd:           'ptsd clinical team',
+    vet_center:        'vet center',
+    mst_counseling:    'mst coordinator',
+    va_sud:            'sud clinic',
+    va_mh_residential: 'residential treatment',
+    caregiver_support: 'caregiver support line',
+    peer_support:      'us vets',
     discharge_upgrade: 'discharge',
   }
 

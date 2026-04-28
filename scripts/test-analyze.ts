@@ -60,12 +60,12 @@ async function test1(): Promise<TestResult> {
     pass = false
   }
 
-  const hudVashConfidence: number = data.confidenceScores?.['hud_vash'] ?? 0
+  const mhOutpatientConfidence: number = data.confidenceScores?.['va_mh_outpatient'] ?? 0
   const allScoresZero = Object.values(data.confidenceScores ?? {}).every((v) => v === 0)
   if (allScoresZero) {
-    notes.push('hud_vash confidence skipped — all scores are 0 (ANTHROPIC_API_KEY invalid; update .env.local)')
-  } else if (hudVashConfidence <= 0.7) {
-    notes.push(`Expected hud_vash confidence > 0.7, got ${hudVashConfidence}`)
+    notes.push('va_mh_outpatient confidence skipped — all scores are 0 (ANTHROPIC_API_KEY invalid; update .env.local)')
+  } else if (mhOutpatientConfidence <= 0.7) {
+    notes.push(`Expected va_mh_outpatient confidence > 0.7, got ${mhOutpatientConfidence}`)
     pass = false
   }
 
@@ -79,7 +79,7 @@ async function test1(): Promise<TestResult> {
     pass = false
   }
 
-  if (pass) notes.push(`${data.benefits.length} benefits, hud_vash confidence=${hudVashConfidence.toFixed(3)}, ${data.disclaimers.length} disclaimers`)
+  if (pass) notes.push(`${data.benefits.length} benefits, va_mh_outpatient confidence=${mhOutpatientConfidence.toFixed(3)}, ${data.disclaimers.length} disclaimers`)
   return { name, pass, notes }
 }
 
