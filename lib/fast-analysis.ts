@@ -12,6 +12,7 @@ export type FastAnalysisResult = {
   top_programs: string[]
   fast_response_text: string
   crisis_flag: boolean
+  trigger_type?: 'keyword' | 'flag'
 }
 
 const CRISIS_KEYWORDS = [
@@ -40,6 +41,7 @@ export function classifyIntake(fields: IntakeFields): FastAnalysisResult {
       top_programs: ['Veterans Crisis Line'],
       fast_response_text: CRISIS_RESPONSE,
       crisis_flag: true,
+      trigger_type: fields.crisis_flag === true ? 'flag' : 'keyword',
     }
   }
 

@@ -11,7 +11,8 @@
     "test:pipeline": "node --env-file=.env.local node_modules/.bin/ts-node -P tsconfig.scripts.json scripts/test-pipeline.ts",
     "test:retrieval": "node --env-file=.env.local node_modules/.bin/ts-node -P tsconfig.scripts.json scripts/test-retrieval.ts",
     "test:analyze": "node --env-file=.env.local node_modules/.bin/ts-node -P tsconfig.scripts.json scripts/test-analyze.ts",
-    "test:all": "npm run test:pipeline && npm run test:retrieval && npm run test:analyze"
+    "test:crisis": "node --env-file=.env.local node_modules/.bin/ts-node -P tsconfig.scripts.json scripts/test-crisis.ts",
+    "test:all": "npm run test:pipeline && npm run test:retrieval && npm run test:analyze && npm run test:crisis"
   },
   "dependencies": {
     "@langchain/anthropic": "^1.3.26",

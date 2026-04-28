@@ -7,6 +7,7 @@ import { redact } from '../../../lib/redact'
 import { auditLog } from '../../../lib/auditLog'
 import { classifyIntake } from '../../../lib/fast-analysis'
 import type { IntakeFields } from '../../../lib/fast-analysis'
+import { handleCrisisEscalation } from '../../../lib/crisis'
 import { createServiceClient } from '../../../lib/supabase'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -275,6 +276,7 @@ export async function POST(req: NextRequest) {
               .map(([k]) => k)
             console.log('[charter/chat] trigger_analysis — populated fields:', populatedFields.join(', '))
             void auditLog({ actor_role: 'system', action: 'pipeline_started', meta: { session_id: mergedProfile.session_id ?? undefined } })
+            const sessionId = String(mergedProfile.session_id ?? 'unknown')
 
             // Fast layer — deterministic, no LLM/RAG, target < 100ms
             const intakeFields: IntakeFields = {
@@ -290,10 +292,22 @@ export async function POST(req: NextRequest) {
             toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Fast analysis delivered. Full analysis running in background.' })
             triggerAnalysisFired = true
 
+            // Crisis escalation — synchronous before response is sent (Steps 2, 3, 4)
+            if (fastAnalysis.crisis_flag) {
+              try {
+                await handleCrisisEscalation({
+                  session_id: sessionId,
+                  trigger_type: fastAnalysis.trigger_type ?? 'flag',
+                })
+              } catch (escalateErr) {
+                // crisis_events write failed — log and continue; veteran must still receive 988 response
+                console.error(`[charter/chat] crisis escalation FAILED — session_id=${sessionId}`)
+              }
+            }
+
             // Deep layer — fire and forget; errors must never surface to the veteran
             const capturedProfile = { ...(mergedProfile as VeteranProfile) }
             const capturedUpdates = { ...profileUpdates }
-            const sessionId = capturedProfile.session_id ?? 'unknown'
             runPipeline(capturedProfile)
               .then(async (completedReport) => {
                 void auditLog({ actor_role: 'system', action: 'report_generated', meta: { session_id: capturedProfile.session_id ?? undefined, benefits_count: completedReport.benefits.length } })
