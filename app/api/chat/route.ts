@@ -5,6 +5,9 @@ import { runPipeline } from '../../../core/pipeline'
 import type { VeteranProfile, ReportJSON } from '../../../types/charter'
 import { redact } from '../../../lib/redact'
 import { auditLog } from '../../../lib/auditLog'
+import { classifyIntake } from '../../../lib/fast-analysis'
+import type { IntakeFields } from '../../../lib/fast-analysis'
+import { createServiceClient } from '../../../lib/supabase'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -256,6 +259,7 @@ export async function POST(req: NextRequest) {
     let report: ReportJSON | undefined
     let lastAssistantText = ''
     let chipSet: string | null = null
+    let triggerAnalysisFired = false
 
     const MAX_LOOPS = 10
     for (let i = 0; i < MAX_LOOPS; i++) {
@@ -320,33 +324,56 @@ export async function POST(req: NextRequest) {
           }
 
           if (block.name === 'trigger_analysis') {
-            const mergedProfile = { ...profile, ...profileUpdates } as VeteranProfile
+            const mergedProfile = { ...profile, ...profileUpdates } as VeteranProfile & Record<string, unknown>
             // Log field names only — never log values (STANDARDS §2.5, no PII in logs)
             const populatedFields = Object.entries(mergedProfile)
               .filter(([, v]) => v !== null && v !== undefined)
               .map(([k]) => k)
-            console.log('[charter/chat] runPipeline triggered — populated fields:', populatedFields.join(', '))
-            const pipelineStart = Date.now()
-            console.log('[charter/chat] runPipeline start — t=0ms')
+            console.log('[charter/chat] trigger_analysis — populated fields:', populatedFields.join(', '))
             void auditLog({ actor_role: 'system', action: 'pipeline_started', meta: { session_id: mergedProfile.session_id ?? undefined } })
-            try {
-              report = await runPipeline(mergedProfile)
-              void auditLog({ actor_role: 'system', action: 'report_generated', meta: { session_id: mergedProfile.session_id ?? undefined, benefits_count: report.benefits.length } })
-              const elapsed = Date.now() - pipelineStart
-              console.log(`[charter/chat] runPipeline complete — elapsed=${elapsed}ms`)
-              toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Analysis complete. Present the key findings to the veteran.' })
-            } catch (err) {
-              const elapsed = Date.now() - pipelineStart
-              console.error(`[charter/chat] runPipeline FAILED — elapsed=${elapsed}ms`, redact(err instanceof Error ? { message: err.message } : err))
-              toolResults.push({
-                type: 'tool_result',
-                tool_use_id: block.id,
-                content: 'Analysis could not be completed due to a technical issue. Let the veteran know you encountered a problem and suggest they contact a VSO at 1-800-827-1000 for immediate help.',
-              })
+
+            // Fast layer — deterministic, no LLM/RAG, target < 100ms
+            const intakeFields: IntakeFields = {
+              discharge_status: String(mergedProfile.discharge_type ?? ''),
+              mental_health_concerns: String(mergedProfile.health_concerns ?? mergedProfile.mental_health_concerns ?? ''),
+              current_care: String(mergedProfile.healthcare_status ?? mergedProfile.current_care ?? ''),
+              urgency_signal: String(mergedProfile.urgency_signal ?? ''),
+              crisis_flag: Boolean(mergedProfile.crisis_flag),
             }
+            const fastAnalysis = classifyIntake(intakeFields)
+            console.log('[charter/chat] fast analysis — urgency_level:', fastAnalysis.urgency_level, '| crisis_flag:', fastAnalysis.crisis_flag)
+            lastAssistantText = fastAnalysis.fast_response_text
+            toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Fast analysis delivered. Full analysis running in background.' })
+            triggerAnalysisFired = true
+
+            // Deep layer — fire and forget; errors must never surface to the veteran
+            const capturedProfile = { ...(mergedProfile as VeteranProfile) }
+            const capturedUpdates = { ...profileUpdates }
+            const sessionId = capturedProfile.session_id ?? 'unknown'
+            runPipeline(capturedProfile)
+              .then(async (completedReport) => {
+                void auditLog({ actor_role: 'system', action: 'report_generated', meta: { session_id: capturedProfile.session_id ?? undefined, benefits_count: completedReport.benefits.length } })
+                if (capturedProfile.id && Object.keys(capturedUpdates).length > 0) {
+                  try {
+                    // SERVICE CLIENT: updating veteran profile after deep pipeline completion — trusted server op
+                    const supabase = createServiceClient()
+                    const safeFields = new Set(['service_branch', 'years_served', 'discharge_type', 'combat_veteran', 'disability_rating', 'housing_status', 'household_income', 'household_size', 'state', 'age', 'separation_date'])
+                    const safeUpdates = Object.fromEntries(Object.entries(capturedUpdates).filter(([k]) => safeFields.has(k)))
+                    if (Object.keys(safeUpdates).length > 0) {
+                      await supabase.from('veteran_profiles').update(safeUpdates).eq('id', capturedProfile.id)
+                    }
+                  } catch (dbErr) {
+                    console.error(`[charter/chat] veteran_profiles update FAILED — session_id=${sessionId}`)
+                  }
+                }
+              })
+              .catch((err) => {
+                console.error(`[charter/chat] runPipeline FAILED — session_id=${sessionId}`, redact(err instanceof Error ? { message: err.message } : err))
+              })
           }
         }
 
+        if (triggerAnalysisFired) break
         if (toolResults.length === 0) break
         currentMessages.push({ role: 'user', content: toolResults })
       }
