@@ -5,12 +5,6 @@ import { createServiceClient } from '../../../lib/supabase'
 import { auditLog } from '../../../lib/auditLog'
 import type { ReportJSON } from '../../../types/charter'
 
-if (!process.env.RESEND_API_KEY) {
-  console.warn('[send-report] RESEND_API_KEY is not set — email sending will fail')
-}
-
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 const BodySchema = z.object({
   email: z.string().email(),
   session_id: z.string(),
@@ -82,6 +76,13 @@ export async function POST(req: NextRequest) {
 
   const { email, session_id, report } = parsed.data
 
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.error('[send-report] RESEND_API_KEY is not configured')
+    return NextResponse.json({ error: 'Email sending is not configured' }, { status: 500 })
+  }
+
+  const resend = new Resend(apiKey)
   const from = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev'
 
   const { error: sendError } = await resend.emails.send({
