@@ -9,6 +9,7 @@
  * 4. Failed crisis_events write re-throws (does not swallow the error)
  */
 
+import * as http from 'http'
 import { handleCrisisEscalation } from '../lib/crisis'
 import { createServiceClient } from '../lib/supabase'
 
@@ -125,9 +126,92 @@ async function runTests() {
   assert(true, 'contract: crisis_events insert error is re-thrown (verified by code review of lib/crisis.ts)')
 
   // -------------------------------------------------------------------
+  // Test 5: crisis_detected audit event fires (queried from audit_log)
+  // handleCrisisEscalation awaits auditLog, so the row is present on return.
+  // -------------------------------------------------------------------
+  console.log()
+  console.log('Test 5 — crisis_detected audit event written to audit_log')
+  try {
+    const { data: auditRows, error: auditErr } = await supabase
+      .from('audit_log')
+      .select('action, meta')
+      .eq('action', 'crisis_detected')
+      .filter('meta->>session_id', 'eq', testSessionFlag)
+
+    if (auditErr) {
+      assert(false, 'audit_log query succeeded', auditErr.message)
+    } else {
+      assert(Array.isArray(auditRows) && auditRows.length > 0, 'crisis_detected row found in audit_log', `rows found: ${auditRows?.length ?? 0}`)
+      const row = auditRows?.[0]
+      assert(row?.meta?.channel === 'web', 'meta.channel is "web"', `got: ${row?.meta?.channel}`)
+      assert(typeof row?.meta?.session_id === 'string', 'meta.session_id is a string', `got: ${typeof row?.meta?.session_id}`)
+      // PHI check: no freeform string values — only enum-like strings and UUIDs
+      const metaValues = Object.entries(row?.meta ?? {}).filter(([, v]) => typeof v === 'string' && (v as string).length > 64)
+      assert(metaValues.length === 0, 'no long freeform strings in meta (PHI gate)', metaValues.length > 0 ? `suspicious keys: ${metaValues.map(([k]) => k).join(', ')}` : 'clean')
+    }
+  } catch (err) {
+    assert(false, 'Test 5 did not throw', err instanceof Error ? err.message : String(err))
+  }
+
+  // -------------------------------------------------------------------
+  // Test 6: OTW POST attempted when OTW_INTAKE_URL is set (mock server)
+  // -------------------------------------------------------------------
+  console.log()
+  console.log('Test 6 — OTW POST sent when OTW_INTAKE_URL is configured')
+  const testSessionOtw = `test-crisis-otw-${Date.now()}`
+  let mockServer: http.Server | null = null
+  try {
+    const receivedBodies: string[] = []
+
+    await new Promise<void>((resolveServer) => {
+      mockServer = http.createServer((req, res) => {
+        let body = ''
+        req.on('data', (chunk) => { body += chunk })
+        req.on('end', () => {
+          receivedBodies.push(body)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: true }))
+        })
+      })
+      mockServer.listen(0, '127.0.0.1', () => resolveServer())
+    })
+
+    const addr = mockServer!.address() as { port: number }
+    const savedOtw = process.env.OTW_INTAKE_URL
+    process.env.OTW_INTAKE_URL = `http://127.0.0.1:${addr.port}`
+
+    try {
+      await handleCrisisEscalation({ session_id: testSessionOtw, trigger_type: 'flag' })
+    } finally {
+      if (savedOtw !== undefined) process.env.OTW_INTAKE_URL = savedOtw
+      else delete process.env.OTW_INTAKE_URL
+    }
+
+    assert(receivedBodies.length > 0, 'mock OTW server received a POST request', `requests received: ${receivedBodies.length}`)
+    if (receivedBodies.length > 0) {
+      const payload = JSON.parse(receivedBodies[0]) as Record<string, unknown>
+      assert(payload.session_id === testSessionOtw, 'OTW POST body contains correct session_id', `got: ${payload.session_id}`)
+      assert(payload.crisis_flag === true, 'OTW POST body has crisis_flag: true', `got: ${payload.crisis_flag}`)
+      assert(payload.channel === 'web', 'OTW POST body has channel: web', `got: ${payload.channel}`)
+    }
+
+    // Verify counselor_notified updated to true after successful OTW POST
+    const { data: eventRow } = await supabase
+      .from('crisis_events')
+      .select('counselor_notified')
+      .eq('session_id', testSessionOtw)
+      .single()
+    assert(eventRow?.counselor_notified === true, 'counselor_notified updated to true after successful OTW POST', `got: ${eventRow?.counselor_notified}`)
+  } catch (err) {
+    assert(false, 'Test 6 did not throw', err instanceof Error ? err.message : String(err))
+  } finally {
+    if (mockServer) (mockServer as http.Server).close()
+  }
+
+  // -------------------------------------------------------------------
   // Cleanup
   // -------------------------------------------------------------------
-  await cleanupRows([testSessionFlag, testSessionKeyword])
+  await cleanupRows([testSessionFlag, testSessionKeyword, testSessionOtw])
   const noWarnRow = `test-crisis-nowarn-`
   // Clean up test 3 row too (session_id starts with prefix — delete by pattern)
   await supabase.from('crisis_events').delete().like('session_id', `${noWarnRow}%`)

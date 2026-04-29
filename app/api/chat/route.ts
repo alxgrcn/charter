@@ -9,6 +9,7 @@ import { classifyIntake } from '../../../lib/fast-analysis'
 import type { IntakeFields } from '../../../lib/fast-analysis'
 import { handleCrisisEscalation } from '../../../lib/crisis'
 import { createServiceClient } from '../../../lib/supabase'
+import { minimizeForStorage } from '../../../lib/minimizeForStorage'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -184,22 +185,6 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
 ]
-
-// ---------------------------------------------------------------------------
-// Data minimization gate
-// Raw user message text must never reach the DB. Only structured, schema-defined
-// profile fields are permitted through this gate.
-// ---------------------------------------------------------------------------
-
-const STORABLE_FIELDS = new Set([
-  'service_branch', 'years_served', 'discharge_type', 'combat_veteran',
-  'disability_rating', 'housing_status', 'household_income', 'household_size',
-  'state', 'age', 'separation_date',
-])
-
-function minimizeForStorage(updates: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(updates).filter(([k]) => STORABLE_FIELDS.has(k)))
-}
 
 // ---------------------------------------------------------------------------
 // Route handler
