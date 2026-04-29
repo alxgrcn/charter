@@ -57,6 +57,11 @@ export async function POST(req: NextRequest) {
 
   void auditLog({
     actor_role: 'system',
+    action: 'report_shared_with_org',
+    meta: { session_id, org: 'us_vets' },
+  })
+  void auditLog({
+    actor_role: 'system',
     action: 'appointment_handoff',
     meta: { session_id, target: 'otw' },
   })

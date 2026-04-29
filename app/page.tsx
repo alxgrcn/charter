@@ -161,6 +161,9 @@ export default function ChatPage() {
             ))}
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center">Used by veteran counselors at US Vets</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center max-w-md leading-relaxed">
+            Your information, including any mental health or substance use disclosures, may be shared with US Veterans Inc. (US Vets) to help connect you with support services. You have the right to withdraw this consent at any time. This service does not provide medical advice, diagnosis, or treatment.
+          </p>
         </div>
         </div>
       </div>

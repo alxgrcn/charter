@@ -186,6 +186,22 @@ const TOOLS: Anthropic.Tool[] = [
 ]
 
 // ---------------------------------------------------------------------------
+// Data minimization gate
+// Raw user message text must never reach the DB. Only structured, schema-defined
+// profile fields are permitted through this gate.
+// ---------------------------------------------------------------------------
+
+const STORABLE_FIELDS = new Set([
+  'service_branch', 'years_served', 'discharge_type', 'combat_veteran',
+  'disability_rating', 'housing_status', 'household_income', 'household_size',
+  'state', 'age', 'separation_date',
+])
+
+function minimizeForStorage(updates: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(updates).filter(([k]) => STORABLE_FIELDS.has(k)))
+}
+
+// ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
 
@@ -253,6 +269,9 @@ export async function POST(req: NextRequest) {
             if (SENSITIVE_FIELDS.has(input.field)) {
               void auditLog({ actor_role: 'system', action: 'field_recorded', meta: { field_name: input.field, session_id: profile.session_id as string | undefined } })
             }
+            if (input.field === 'contact_consent' && Boolean(value) === true) {
+              void auditLog({ actor_role: 'system', action: 'consent_captured', meta: { session_id: profile.session_id as string | undefined } })
+            }
             toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'recorded' })
           }
 
@@ -288,6 +307,7 @@ export async function POST(req: NextRequest) {
             }
             const fastAnalysis = classifyIntake(intakeFields)
             console.log('[charter/chat] fast analysis — urgency_level:', fastAnalysis.urgency_level, '| crisis_flag:', fastAnalysis.crisis_flag)
+            void auditLog({ actor_role: 'system', action: 'fast_analysis_complete', meta: { session_id: sessionId, support_category: fastAnalysis.support_category, urgency_level: fastAnalysis.urgency_level } })
             lastAssistantText = fastAnalysis.fast_response_text
             toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Fast analysis delivered. Full analysis running in background.' })
             triggerAnalysisFired = true
@@ -303,6 +323,7 @@ export async function POST(req: NextRequest) {
                 // crisis_events write failed — log and continue; veteran must still receive 988 response
                 console.error(`[charter/chat] crisis escalation FAILED — session_id=${sessionId}`)
               }
+              void auditLog({ actor_role: 'system', action: 'crisis_detected', meta: { session_id: sessionId, channel: 'web' } })
             }
 
             // Deep layer — fire and forget; errors must never surface to the veteran
@@ -315,8 +336,7 @@ export async function POST(req: NextRequest) {
                   try {
                     // SERVICE CLIENT: updating veteran profile after deep pipeline completion — trusted server op
                     const supabase = createServiceClient()
-                    const safeFields = new Set(['service_branch', 'years_served', 'discharge_type', 'combat_veteran', 'disability_rating', 'housing_status', 'household_income', 'household_size', 'state', 'age', 'separation_date'])
-                    const safeUpdates = Object.fromEntries(Object.entries(capturedUpdates).filter(([k]) => safeFields.has(k)))
+                    const safeUpdates = minimizeForStorage(capturedUpdates)
                     if (Object.keys(safeUpdates).length > 0) {
                       await supabase.from('veteran_profiles').update(safeUpdates).eq('id', capturedProfile.id)
                     }
@@ -324,6 +344,7 @@ export async function POST(req: NextRequest) {
                     console.error(`[charter/chat] veteran_profiles update FAILED — session_id=${sessionId}`)
                   }
                 }
+                void auditLog({ actor_role: 'system', action: 'deep_analysis_complete', meta: { session_id: capturedProfile.session_id ?? undefined, categories_scored: completedReport.benefits.length, report_emailed: false } })
               })
               .catch((err) => {
                 console.error(`[charter/chat] runPipeline FAILED — session_id=${sessionId}`, redact(err instanceof Error ? { message: err.message } : err))
