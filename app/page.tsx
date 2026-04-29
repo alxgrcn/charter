@@ -8,24 +8,11 @@ import ThemeToggle from './components/ThemeToggle'
 import type { VeteranProfile, ReportJSON } from '../types/charter'
 
 const LANDING_CHIPS = [
-  '🏠 I need housing help',
-  '🎓 I want to go back to school',
-  '🏡 I want to buy a home',
-  '📋 Help me understand my rating',
-  '💼 Find jobs & career help',
-]
-
-const ROTATING_QUESTIONS = [
-  "What benefits am I missing that I don't even know exist?",
-  "What little-known benefits do 100% vets actually get?",
-  "Do my dependents get ChampVA at my current rating?",
-  "Should I file for secondary conditions now?",
-  "What state benefits am I leaving on the table?",
-  "At my rating, what healthcare do I actually get?",
-  "The claim is moving slow — what's happening behind the scenes?",
-  "I'm overwhelmed by the paperwork. Am I screwing this up?",
-  "Will DEA still be there for my kids in 10-15 years?",
-  "If I'm 80% P&T or TDIU, do I get the same stuff as 100%?",
+  "💬 I've been dealing with PTSD",
+  '😴 Sleep and anxiety issues',
+  '🍺 I need help with substance use',
+  "💔 I'm having a hard time adjusting",
+  '🆘 I need help right now',
 ]
 
 type AssistantMessage = { role: 'assistant'; content: string }
@@ -63,25 +50,11 @@ export default function ChatPage() {
   }))
   const [report, setReport] = useState<ReportJSON | null>(null)
   const [chips, setChips] = useState<string[]>([])
-  const [questionIndex, setQuestionIndex] = useState(0)
-  const [questionVisible, setQuestionVisible] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
-
-  useEffect(() => {
-    if (messages.length > 0 || loading) return
-    const timer = setInterval(() => {
-      setQuestionVisible(false)
-      setTimeout(() => {
-        setQuestionIndex((i) => (i + 1) % ROTATING_QUESTIONS.length)
-        setQuestionVisible(true)
-      }, 700)
-    }, 8000)
-    return () => clearInterval(timer)
-  }, [messages.length, loading])
 
   async function handleSend(text: string) {
     setChips([])
@@ -130,23 +103,20 @@ export default function ChatPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Charter</h1>
-              <p className="text-xs text-gray-400 dark:text-gray-500">Veteran Benefits Navigator</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">Veteran Mental Health Navigator</p>
             </div>
             <ThemeToggle />
           </div>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center">
         <div className="w-full max-w-2xl px-6 flex flex-col items-center gap-5 -mt-[5vh]">
-          <button
-            onClick={() => handleSend(ROTATING_QUESTIONS[questionIndex])}
+          <h2
             style={{ fontFamily: 'var(--font-playfair, Georgia, serif)' }}
-            className={`text-5xl font-light text-zinc-800 dark:text-gray-100 text-center leading-snug transition-opacity duration-700 ${
-              questionVisible ? 'opacity-100' : 'opacity-0'
-            }`}
+            className="text-5xl font-light text-zinc-800 dark:text-gray-100 text-center leading-snug"
           >
-            {ROTATING_QUESTIONS[questionIndex]}
-          </button>
-          <p className="text-sm text-gray-400 dark:text-gray-500 text-center tracking-wide">Free. Private. Built for veterans.</p>
+            You don&apos;t have to figure this out alone.
+          </h2>
+          <p className="text-sm text-gray-400 dark:text-gray-500 text-center tracking-wide">Private. Built for veterans. Designed to help you find the right support.</p>
           <ChatInput onSend={handleSend} disabled={loading} chips={chips} isLanding />
           <div className="flex flex-wrap justify-center gap-2 max-w-2xl mx-auto px-4">
             {LANDING_CHIPS.map((chip) => (
@@ -176,7 +146,7 @@ export default function ChatPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Charter</h1>
-            <p className="text-xs text-gray-400 dark:text-gray-500">Veteran Benefits Navigator</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Veteran Mental Health Navigator</p>
           </div>
           <ThemeToggle />
         </div>
