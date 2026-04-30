@@ -18,6 +18,7 @@ LangGraph · Claude Sonnet · OpenAI text-embedding-3-small
 
 ## Read at Session Start
 - Read `docs/GLOSSARY.md` — shared vocabulary. These definitions win.
+- Read `DEBUGGING.md` — debugging protocol and known footguns. Follow it every time something breaks.
 - Read `docs/CONTEXT_MAP.md` — what Charter owns and does not own.
 - Read `docs/CONTRACTS.md` — interface agreements with IVA, SMS, OTW.
 
