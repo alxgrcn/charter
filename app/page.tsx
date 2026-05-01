@@ -34,7 +34,7 @@ type ChatResponse = {
   content: string
   profileUpdates?: Partial<VeteranProfile>
   chipSet?: string | null
-  report?: ReportJSON
+  analysisStarted?: boolean
 }
 
 export default function ChatPage() {
@@ -50,11 +50,17 @@ export default function ChatPage() {
   }))
   const [chips, setChips] = useState<string[]>([])
   const [report, setReport] = useState<ReportJSON | null>(null)
+  const [isPolling, setIsPolling] = useState(false)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
+  }, [messages, loading, isPolling])
+
+  useEffect(() => {
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current) }
+  }, [])
 
   async function handleSend(text: string) {
     setChips([])
@@ -78,7 +84,23 @@ export default function ChatPage() {
       const newMsg: AssistantMessage = { role: data.role, content: data.content }
       setMessages((prev) => [...prev, newMsg])
       setChips(data.chipSet ? (CHIP_SETS[data.chipSet] ?? []) : [])
-      if (data.report) setReport(data.report)
+      if (data.analysisStarted && profile.id) {
+        setIsPolling(true)
+        if (pollingRef.current) clearInterval(pollingRef.current)
+        pollingRef.current = setInterval(async () => {
+          try {
+            const pollRes = await fetch(`/api/report?session_id=${profile.id}`)
+            const pollData = await pollRes.json() as { report?: ReportJSON; pending?: boolean }
+            if (pollData.report) {
+              setReport(pollData.report)
+              setIsPolling(false)
+              if (pollingRef.current) clearInterval(pollingRef.current)
+            }
+          } catch {
+            // ignore — retry on next interval
+          }
+        }, 3000)
+      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Unknown error'
       console.error('[Charter] fetch error:', errMsg)
@@ -162,6 +184,13 @@ export default function ChatPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:150ms]" />
                   <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:300ms]" />
                 </span>
+              </div>
+            </div>
+          )}
+          {isPolling && !report && (
+            <div className="flex justify-start">
+              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-2xl rounded-bl-sm px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">
+                Analyzing your benefits — this usually takes 30–60 seconds…
               </div>
             </div>
           )}
