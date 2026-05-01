@@ -201,8 +201,8 @@ export async function POST(req: NextRequest) {
     const { messages, profile } = parsed.data
     const currentMessages = messages as Anthropic.MessageParam[]
 
+    let reportResult: ReportJSON | null = null
     let profileUpdates: Partial<VeteranProfile> = {}
-    let report: ReportJSON | undefined
     let lastAssistantText = ''
     let chipSet: string | null = null
     let triggerAnalysisFired = false
@@ -311,29 +311,55 @@ export async function POST(req: NextRequest) {
               void auditLog({ actor_role: 'system', action: 'crisis_detected', meta: { session_id: sessionId, channel: 'web' } })
             }
 
-            // Deep layer — fire and forget; errors must never surface to the veteran
+            // Deep layer — awaited so report can be returned to the frontend
             const capturedProfile = { ...(mergedProfile as VeteranProfile) }
             const capturedUpdates = { ...profileUpdates }
-            runPipeline(capturedProfile)
-              .then(async (completedReport) => {
-                void auditLog({ actor_role: 'system', action: 'report_generated', meta: { session_id: capturedProfile.session_id ?? undefined, benefits_count: completedReport.benefits.length } })
-                if (capturedProfile.id && Object.keys(capturedUpdates).length > 0) {
-                  try {
-                    // SERVICE CLIENT: updating veteran profile after deep pipeline completion — trusted server op
-                    const supabase = createServiceClient()
-                    const safeUpdates = minimizeForStorage(capturedUpdates)
-                    if (Object.keys(safeUpdates).length > 0) {
-                      await supabase.from('veteran_profiles').update(safeUpdates).eq('id', capturedProfile.id)
-                    }
-                  } catch (dbErr) {
-                    console.error(`[charter/chat] veteran_profiles update FAILED — session_id=${sessionId}`)
+            try {
+              const completedReport = await runPipeline(capturedProfile)
+              reportResult = completedReport
+              void auditLog({ actor_role: 'system', action: 'report_generated', meta: { session_id: capturedProfile.session_id ?? undefined, benefits_count: completedReport.benefits.length } })
+              if (capturedProfile.id && Object.keys(capturedUpdates).length > 0) {
+                try {
+                  // SERVICE CLIENT: updating veteran profile after deep pipeline completion — trusted server op
+                  const supabase = createServiceClient()
+                  const safeUpdates = minimizeForStorage(capturedUpdates)
+                  if (Object.keys(safeUpdates).length > 0) {
+                    await supabase.from('veteran_profiles').update(safeUpdates).eq('id', capturedProfile.id)
                   }
+                } catch (dbErr) {
+                  console.error(`[charter/chat] veteran_profiles update FAILED — session_id=${sessionId}`)
                 }
-                void auditLog({ actor_role: 'system', action: 'deep_analysis_complete', meta: { session_id: capturedProfile.session_id ?? undefined, categories_scored: completedReport.benefits.length, report_emailed: false } })
-              })
-              .catch((err) => {
-                console.error(`[charter/chat] runPipeline FAILED — session_id=${sessionId}`, redact(err instanceof Error ? { message: err.message } : err))
-              })
+              }
+
+              // Email report to veteran — best-effort, never throws
+              let reportEmailed = false
+              const reportEmail = capturedProfile.email as string | undefined
+              if (reportEmail && capturedProfile.session_id) {
+                try {
+                  const baseUrl = process.env.VERCEL_URL
+                    ? `https://${process.env.VERCEL_URL}`
+                    : 'http://localhost:3003'
+                  const emailRes = await fetch(`${baseUrl}/api/send-report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: reportEmail, session_id: capturedProfile.session_id, report: completedReport }),
+                  })
+                  if (emailRes.ok) {
+                    reportEmailed = true
+                  } else {
+                    console.error(`[charter/chat] send-report returned ${emailRes.status} — session_id=${sessionId}`)
+                  }
+                } catch (emailErr) {
+                  console.error(`[charter/chat] send-report fetch failed — session_id=${sessionId}`)
+                }
+              } else {
+                console.warn(`[charter/chat] no email on profile — report not sent — session_id=${sessionId}`)
+              }
+
+              void auditLog({ actor_role: 'system', action: 'deep_analysis_complete', meta: { session_id: capturedProfile.session_id ?? undefined, categories_scored: completedReport.benefits.length, report_emailed: reportEmailed } })
+            } catch (err) {
+              console.error(`[charter/chat] runPipeline FAILED — session_id=${sessionId}`, redact(err instanceof Error ? { message: err.message } : err))
+            }
           }
         }
 
@@ -347,8 +373,8 @@ export async function POST(req: NextRequest) {
       role: 'assistant',
       content: lastAssistantText || "I'm sorry, I wasn't able to generate a response. Please try again or contact a Veterans Service Officer at 1-800-827-1000.",
       ...(Object.keys(profileUpdates).length > 0 && { profileUpdates }),
-      ...(report && { report }),
       chipSet,
+      ...(reportResult && { report: reportResult }),
     })
   } catch (err) {
     console.error('[chat/route]:', redact(err instanceof Error ? { message: err.message } : err))

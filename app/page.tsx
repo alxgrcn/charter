@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import ChatMessage from './components/ChatMessage'
 import ChatInput from './components/ChatInput'
-import BenefitReport from './components/BenefitReport'
 import ThemeToggle from './components/ThemeToggle'
 import type { VeteranProfile, ReportJSON } from '../types/charter'
+import BenefitReport from './components/BenefitReport'
 
 const LANDING_CHIPS = [
   "💬 I've been dealing with PTSD",
@@ -33,8 +33,8 @@ type ChatResponse = {
   role: 'assistant'
   content: string
   profileUpdates?: Partial<VeteranProfile>
-  report?: ReportJSON
   chipSet?: string | null
+  report?: ReportJSON
 }
 
 export default function ChatPage() {
@@ -48,8 +48,8 @@ export default function ChatPage() {
     created_at: new Date().toISOString(),
     expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
   }))
-  const [report, setReport] = useState<ReportJSON | null>(null)
   const [chips, setChips] = useState<string[]>([])
+  const [report, setReport] = useState<ReportJSON | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -75,13 +75,10 @@ export default function ChatPage() {
       if (data.profileUpdates) {
         setProfile((prev) => ({ ...prev, ...data.profileUpdates }))
       }
-      if (data.report) {
-        console.log('[Charter] report generated:', data.report)
-        setReport(data.report)
-      }
       const newMsg: AssistantMessage = { role: data.role, content: data.content }
       setMessages((prev) => [...prev, newMsg])
       setChips(data.chipSet ? (CHIP_SETS[data.chipSet] ?? []) : [])
+      if (data.report) setReport(data.report)
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Unknown error'
       console.error('[Charter] fetch error:', errMsg)
@@ -157,7 +154,6 @@ export default function ChatPage() {
           {messages.map((msg, i) => (
             <ChatMessage key={i} role={msg.role} content={msg.content} />
           ))}
-          {report && <BenefitReport report={report} sessionId={profile.session_id ?? ''} profile={profile} />}
           {loading && (
             <div className="flex justify-start">
               <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-2xl rounded-bl-sm px-4 py-3">
@@ -168,6 +164,9 @@ export default function ChatPage() {
                 </span>
               </div>
             </div>
+          )}
+          {report && (
+            <BenefitReport report={report} sessionId={profile.session_id ?? undefined} profile={profile} />
           )}
           <div ref={bottomRef} />
         </div>
