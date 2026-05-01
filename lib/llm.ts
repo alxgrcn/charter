@@ -68,7 +68,7 @@ function buildProfileSummary(profile: VeteranProfile): string {
     `Combat veteran: ${profile.combat_veteran ? 'yes' : 'no'}`,
     `Disability rating: ${profile.disability_rating !== null ? `${profile.disability_rating}%` : 'none on file'}`,
     `Housing status: ${profile.housing_status ?? 'unknown'}`,
-    `Household income: ${profile.household_income !== null ? `$${profile.household_income.toLocaleString()}` : 'unknown'}`,
+    `Household income: ${profile.household_income != null ? `$${profile.household_income.toLocaleString()}` : 'unknown'}`,
     `Household size: ${profile.household_size ?? 'unknown'}`,
     `State: ${profile.state ?? 'unknown'}`,
     `Age: ${profile.age ?? 'unknown'}`,
