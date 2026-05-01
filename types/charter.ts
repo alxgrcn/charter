@@ -13,6 +13,12 @@ export type VeteranProfile = {
   state: string | null
   age: number | null
   separation_date: string | null
+  name: string | null
+  phone: string | null
+  email: string | null
+  contact_consent: boolean | null
+  contact_consent_at: string | null
+  mental_health_conditions?: string[]
   created_at: string
   expires_at: string
 }

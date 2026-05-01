@@ -94,6 +94,11 @@ function buildProfile(input: AnalyzeBody): VeteranProfile {
     state: input.location || null,
     age: null,
     separation_date: input.serviceDates?.end ?? null,
+    name: null,
+    phone: null,
+    email: null,
+    contact_consent: null,
+    contact_consent_at: null,
     created_at: now.toISOString(),
     expires_at: expires.toISOString(),
   }

@@ -105,7 +105,8 @@ The system checks every message for crisis signals before your response is gener
 TOOL USE — required for data collection:
 
 Call record_field immediately when a value is confirmed — never batch multiple fields.
-Fields to capture: service_branch, discharge_type, housing_status, state, age, name, phone, email, contact_consent, contact_consent_at.
+Fields to capture: service_branch, discharge_type, housing_status, state, age, name, phone, email, contact_consent, contact_consent_at, mental_health_conditions.
+When a veteran states a mental health condition (e.g. PTSD, sleep issues, substance use, MST), call record_field immediately with field: mental_health_conditions and value: the condition as a short string. Call it once per condition as they disclose — not batched at the end.
 When contact info is collected, also call record_field for contact_consent = true and contact_consent_at = current ISO timestamp.
 After capturing name and contact method, immediately call trigger_analysis().
 
@@ -136,7 +137,7 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         field: {
           type: 'string',
-          description: 'Profile field name: service_branch | years_served | discharge_type | combat_veteran | disability_rating | housing_status | household_income | household_size | state | age | separation_date | name | phone | email | contact_consent | contact_consent_at',
+          description: 'Profile field name: service_branch | years_served | discharge_type | combat_veteran | disability_rating | housing_status | household_income | household_size | state | age | separation_date | name | phone | email | contact_consent | contact_consent_at | mental_health_conditions',
         },
         value: {
           description: 'The confirmed field value',
@@ -249,7 +250,15 @@ export async function POST(req: NextRequest) {
             // TODO: name, phone, email, contact_consent, contact_consent_at fields require
             // Migration 003 (supabase/migrations/003_lead_capture.sql) to be run in Supabase
             // before these values will persist to veteran_profiles.
-            profileUpdates = { ...profileUpdates, [input.field]: value }
+            if (input.field === 'mental_health_conditions') {
+              const existing = profileUpdates.mental_health_conditions ?? []
+              profileUpdates = {
+                ...profileUpdates,
+                mental_health_conditions: [...existing, String(input.value)],
+              }
+            } else {
+              profileUpdates = { ...profileUpdates, [input.field]: value }
+            }
             if (SENSITIVE_FIELDS.has(input.field)) {
               void auditLog({ actor_role: 'system', action: 'field_recorded', meta: { field_name: input.field, session_id: profile.session_id as string | undefined } })
             }

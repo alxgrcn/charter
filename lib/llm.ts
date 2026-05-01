@@ -73,6 +73,11 @@ function buildProfileSummary(profile: VeteranProfile): string {
     `State: ${profile.state ?? 'unknown'}`,
     `Age: ${profile.age ?? 'unknown'}`,
     `Separation year: ${profile.separation_date ? new Date(profile.separation_date).getFullYear() : 'unknown'}`,
+    `Mental health conditions: ${
+      profile.mental_health_conditions?.length
+        ? profile.mental_health_conditions.join(', ')
+        : 'not disclosed'
+    }`,
   ].join('\n')
 }
 

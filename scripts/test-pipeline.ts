@@ -27,6 +27,11 @@ const PROFILE: VeteranProfile = {
   state: 'CA',
   age: 34,
   separation_date: '2021-06-15',
+  name: null,
+  phone: null,
+  email: null,
+  contact_consent: null,
+  contact_consent_at: null,
   created_at: new Date().toISOString(),
   expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
 }
