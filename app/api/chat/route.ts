@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { runPipeline } from '../../../core/pipeline'
@@ -313,7 +314,7 @@ export async function POST(req: NextRequest) {
             // Deep layer — fire and forget; errors must never surface to the veteran
             const capturedProfile = { ...(mergedProfile as VeteranProfile) }
             const capturedUpdates = { ...profileUpdates }
-            runPipeline(capturedProfile)
+            waitUntil(runPipeline(capturedProfile)
               .then(async (completedReport) => {
                 void auditLog({ actor_role: 'system', action: 'report_generated', meta: { session_id: capturedProfile.session_id ?? undefined, benefits_count: completedReport.benefits.length } })
                 if (capturedProfile.id && Object.keys(capturedUpdates).length > 0) {
@@ -375,7 +376,7 @@ export async function POST(req: NextRequest) {
               })
               .catch((err) => {
                 console.error(`[charter/chat] runPipeline FAILED — session_id=${sessionId}`, redact(err instanceof Error ? { message: err.message } : err))
-              })
+              }))
           }
         }
 
