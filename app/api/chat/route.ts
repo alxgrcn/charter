@@ -12,8 +12,6 @@ import { handleCrisisEscalation } from '../../../lib/crisis'
 import { createServiceClient } from '../../../lib/supabase'
 import { minimizeForStorage } from '../../../lib/minimizeForStorage'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
 const SENSITIVE_FIELDS = new Set(['name', 'phone', 'dob', 'health_concerns', 'discharge_status'])
 
 // ---------------------------------------------------------------------------
@@ -192,6 +190,7 @@ const TOOLS: Anthropic.Tool[] = [
 // ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   try {
     const body = await req.json().catch(() => null)
     const parsed = BodySchema.safeParse(body)
