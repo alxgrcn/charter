@@ -261,16 +261,12 @@ function runDataMinimizationTests() {
   console.log()
 
   const allStorable = Object.fromEntries([...STORABLE_FIELDS].map((k) => [k, `val_${k}`]))
-  const nonStorable: Record<string, unknown> = {
-    name: 'John Veteran',
-    phone: '555-555-5555',
-    email: 'test@example.com',
+  // Raw user content must never reach the DB regardless of VeteranProfile shape
+  const trulyNonStorable: Record<string, unknown> = {
     raw_message: 'I have been struggling with nightmares and feel hopeless.',
-    contact_consent: true,
-    contact_consent_at: new Date().toISOString(),
     some_other_field: 'arbitrary value',
   }
-  const mixed = { ...allStorable, ...nonStorable }
+  const mixed = { ...allStorable, ...trulyNonStorable }
 
   const result = minimizeForStorage(mixed)
 
@@ -279,15 +275,15 @@ function runDataMinimizationTests() {
     assert(key in result, `STORABLE_FIELD present in output: ${key}`, `value: ${result[key]}`)
   }
 
-  // All non-storable keys must be absent from output
-  for (const key of Object.keys(nonStorable)) {
+  // Raw user content keys must be absent from output
+  for (const key of Object.keys(trulyNonStorable)) {
     assert(!(key in result), `non-storable key absent from output: ${key}`)
   }
 
   // Verify no mutation of the original object
   const originalKeys = Object.keys(mixed).length
   assert(Object.keys(mixed).length === originalKeys, 'original object not mutated (key count unchanged)')
-  for (const key of Object.keys(nonStorable)) {
+  for (const key of Object.keys(trulyNonStorable)) {
     assert(key in mixed, `original object retains non-storable key: ${key}`)
   }
 
@@ -295,7 +291,7 @@ function runDataMinimizationTests() {
   assert(Object.keys(minimizeForStorage({})).length === 0, 'empty input returns empty output')
 
   // Edge case: only non-storable keys
-  const onlyNonStorable = { name: 'Test', message: 'I need help' }
+  const onlyNonStorable = { raw_message: 'I need help', some_other: 'value' }
   assert(Object.keys(minimizeForStorage(onlyNonStorable)).length === 0, 'only non-storable keys → empty output')
 
   console.log()
