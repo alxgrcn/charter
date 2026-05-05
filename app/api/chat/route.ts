@@ -322,6 +322,28 @@ export async function POST(req: NextRequest) {
             // Deep layer — fire and forget; errors must never surface to the veteran
             const capturedProfile = { ...(mergedProfile as VeteranProfile) }
             const capturedUpdates = { ...profileUpdates }
+
+            // Seed veteran_profiles so the FK on benefit_reports is satisfied.
+            // The id is generated client-side and never INSERTed otherwise — upsert here before the
+            // pipeline fires so benefit_reports.veteran_profile_id has a valid parent row.
+            if (capturedProfile.id) {
+              try {
+                // SERVICE CLIENT: upserting veteran_profiles seed row before pipeline fires — ensures FK exists for benefit_reports
+                const seedSupabase = createServiceClient()
+                const safeUpdates = minimizeForStorage(capturedUpdates)
+                const seedPayload = {
+                  id: capturedProfile.id,
+                  org_id: capturedProfile.org_id ?? 'demo',
+                  ...safeUpdates,
+                }
+                await seedSupabase
+                  .from('veteran_profiles')
+                  .upsert(seedPayload, { onConflict: 'id' })
+              } catch (dbErr) {
+                console.error(`[charter/chat] veteran_profiles upsert FAILED — session_id=${sessionId}`)
+              }
+            }
+
             waitUntil(runPipeline(capturedProfile)
               .then(async (completedReport) => {
                 void auditLog({ actor_role: 'system', action: 'report_generated', meta: { session_id: capturedProfile.session_id ?? undefined, benefits_count: completedReport.benefits.length } })

@@ -8,5 +8,9 @@ export const STORABLE_FIELDS = new Set([
 ])
 
 export function minimizeForStorage(updates: Record<string, unknown>): Record<string, unknown> {
+  const dropped = Object.keys(updates).filter((k) => !STORABLE_FIELDS.has(k))
+  if (dropped.length > 0) {
+    console.warn('[minimizeForStorage] dropped fields:', dropped)
+  }
   return Object.fromEntries(Object.entries(updates).filter(([k]) => STORABLE_FIELDS.has(k)))
 }
