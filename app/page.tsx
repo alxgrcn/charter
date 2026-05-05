@@ -52,6 +52,8 @@ export default function ChatPage() {
   const [report, setReport] = useState<ReportJSON | null>(null)
   const [isPolling, setIsPolling] = useState(false)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollCountRef = useRef(0)
+  const [pollTimedOut, setPollTimedOut] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -86,8 +88,18 @@ export default function ChatPage() {
       setChips(data.chipSet ? (CHIP_SETS[data.chipSet] ?? []) : [])
       if (data.analysisStarted && profile.id) {
         setIsPolling(true)
+        setPollTimedOut(false)
+        pollCountRef.current = 0
         if (pollingRef.current) clearInterval(pollingRef.current)
         pollingRef.current = setInterval(async () => {
+          pollCountRef.current += 1
+          if (pollCountRef.current >= 40) {
+            if (pollingRef.current) clearInterval(pollingRef.current)
+            pollingRef.current = null
+            setIsPolling(false)
+            setPollTimedOut(true)
+            return
+          }
           try {
             const pollRes = await fetch(`/api/report?session_id=${profile.id}`)
             const pollData = await pollRes.json() as { report?: ReportJSON; pending?: boolean }
@@ -191,6 +203,13 @@ export default function ChatPage() {
             <div className="flex justify-start">
               <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-2xl rounded-bl-sm px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">
                 Analyzing your benefits — this usually takes 30–60 seconds…
+              </div>
+            </div>
+          )}
+          {pollTimedOut && !report && (
+            <div className="flex justify-start">
+              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-2xl rounded-bl-sm px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">
+                This is taking longer than expected. Your conversation has been saved. Please refresh and try again, or contact support.
               </div>
             </div>
           )}
