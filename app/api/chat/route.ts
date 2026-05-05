@@ -340,7 +340,7 @@ export async function POST(req: NextRequest) {
                   .from('veteran_profiles')
                   .upsert(seedPayload, { onConflict: 'id' })
               } catch (dbErr) {
-                console.error(`[charter/chat] veteran_profiles upsert FAILED — session_id=${sessionId}`)
+                console.error(`[charter/chat] veteran_profiles upsert FAILED — session_id=${sessionId}`, dbErr)
               }
             }
 
