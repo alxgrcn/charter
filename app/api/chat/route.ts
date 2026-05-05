@@ -293,7 +293,7 @@ export async function POST(req: NextRequest) {
             // Fast layer — deterministic, no LLM/RAG, target < 100ms
             const intakeFields: IntakeFields = {
               discharge_status: String(mergedProfile.discharge_type ?? ''),
-              mental_health_concerns: String(mergedProfile.health_concerns ?? mergedProfile.mental_health_concerns ?? ''),
+              mental_health_concerns: (mergedProfile.mental_health_conditions as string[] ?? []).join(', '),
               current_care: String(mergedProfile.healthcare_status ?? mergedProfile.current_care ?? ''),
               urgency_signal: String(mergedProfile.urgency_signal ?? ''),
               crisis_flag: Boolean(mergedProfile.crisis_flag),
