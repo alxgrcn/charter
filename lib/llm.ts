@@ -3,7 +3,9 @@ import type { VeteranProfile, BenefitDetermination } from '../types/charter'
 import type { RagChunk } from './rag'
 import { redact } from './redact'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+function getAnthropicClient() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+}
 
 const DETERMINATION_SCHEMA = `{
   "benefit_id": "<string>",
@@ -91,6 +93,7 @@ export async function determineAllBenefits(
   profile: VeteranProfile,
   contexts: BenefitContext[]
 ): Promise<BenefitDetermination[]> {
+  const client = getAnthropicClient()
   const profileSummary = buildProfileSummary(profile)
 
   // Pre-fill unknowns for any benefit with no RAG chunks
@@ -155,6 +158,7 @@ export async function determineBenefit(
   benefitId: string,
   benefitName: string
 ): Promise<BenefitDetermination> {
+  const client = getAnthropicClient()
   if (chunks.length === 0) {
     return unknownDetermination(benefitId, benefitName)
   }

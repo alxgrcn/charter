@@ -2,7 +2,9 @@ import OpenAI from 'openai'
 import { createServiceClient } from './supabase'
 import { redact } from './redact'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+function getOpenAIClient() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+}
 
 export type RagChunk = {
   content: string
@@ -16,6 +18,7 @@ export async function retrieveChunks(
   filters: { benefit_categories?: string[]; state?: string | null },
   topK = 3
 ): Promise<RagChunk[]> {
+  const openai = getOpenAIClient()
   try {
     const embRes = await openai.embeddings.create({
       model: 'text-embedding-3-small',
